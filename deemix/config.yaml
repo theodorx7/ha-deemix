@@ -14,7 +14,7 @@ map:
   - addon_config:rw
   - media:rw
   - share:rw
-  - ssl:rw
+  - ssl:ro
 
 # Порт для веб-интерфейса
 ports:

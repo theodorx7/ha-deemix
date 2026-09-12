@@ -61,9 +61,6 @@ LABEL \
     io.hass.description="Deemix - Music Downloader" \
     io.hass.url="https://github.com/theodorx7/ha-deemix" \
     org.opencontainers.image.title="Home Assistant App: Deemix" \
-    org.opencontainers.image.description="Deemix - Music Downloader" \
-    org.opencontainers.image.version=${BUILD_VERSION} \
-    org.opencontainers.image.source="https://github.com/theodorx7/ha-deemix" \
     org.opencontainers.image.licenses="GPL-3.0"
 
 EXPOSE 6595

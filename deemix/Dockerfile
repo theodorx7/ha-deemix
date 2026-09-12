@@ -54,16 +54,6 @@ LABEL \
     org.opencontainers.image.source="https://github.com/theodorx7/ha-deemix" \
     org.opencontainers.image.licenses="GPL-3.0"
 
-# ================================================================
-# Конфигурация
-# ================================================================
-ENV DEEMIX_DATA_DIR="/config" \
-    DEEMIX_MUSIC_DIR="/media" \
-    DEEMIX_SERVER_PORT="6595" \
-    DEEMIX_HOST="0.0.0.0" \
-    DEEMIX_SINGLE_USER="true" \
-    NODE_ENV="production"
-
 EXPOSE 6595
 
 # HA S6 entrypoint

@@ -1,5 +1,4 @@
 #!/usr/bin/with-contenv bash
-
 set -e
 
 echo "[info] Applying Home Assistant options"
@@ -15,13 +14,10 @@ set_env() {
     export "${1}=${2}"
 }
 
-# Вариант B только (раскомментировать):
-# set_env DEEMIX_MUSIC_DIR "/media/deemix"
-
 # Custom environment variables from the add-on options (env_vars)
 while IFS= read -r -d '' key && IFS= read -r value; do
     set_env "${key}" "${value}"
-    echo "[info] env: ${key}"
+    echo "[info] env: ${key}=${value}"
 done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.json)
 
 echo "[info] Home Assistant options applied"

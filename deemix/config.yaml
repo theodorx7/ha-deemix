@@ -25,7 +25,7 @@ environment:
 webui: "[PROTO:ssl]://[HOST]:[PORT:6595]"
 panel_icon: "mdi:music-circle"
 panel_title: "Deemix"
-panel_admin: true
+panel_admin: false
 
 options:
   server_port: 6595

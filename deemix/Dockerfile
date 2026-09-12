@@ -1,4 +1,4 @@
-FROM ghcr.io/bambanah/deemix:v4.7.0-1
+FROM ghcr.io/bambanah/deemix:v4.7.0
 
 # Defaults for LSIO user mapping (overridable via env_vars)
 ENV PUID=911 PGID=911

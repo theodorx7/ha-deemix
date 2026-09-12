@@ -14,7 +14,6 @@ map:
   - addon_config:rw
   - media:rw
   - share:rw
-  - ssl:ro
 
 # Порт для веб-интерфейса
 ports:
@@ -22,15 +21,11 @@ ports:
 ports_description:
   6595/tcp: "Deemix WebUI"
 # Веб-интерфейс (прямой доступ)
-webui: "[PROTO:ssl]://[HOST]:[PORT:6595]"
+webui: "http://[HOST]:[PORT:6595]"
 
 options:
   env_vars: []
-  server_port: 6595
-  host: "0.0.0.0"
 schema:
   env_vars:
     - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
       value: "str?"
-  server_port: "port"
-  host: "str"

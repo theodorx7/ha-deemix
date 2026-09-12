@@ -24,7 +24,9 @@ ports_description:
 webui: "http://[HOST]:[PORT:6595]"
 
 options:
-  env_vars: []
+  env_vars:
+    - name: DEEMIX_MUSIC_DIR
+      value: /media/downloads/
 schema:
   env_vars:
     - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"

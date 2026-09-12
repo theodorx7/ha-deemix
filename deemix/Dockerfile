@@ -1,5 +1,5 @@
 # ================================================================
-# ОДИН Dockerfile — собираем deemix из исходников на HA base
+# Сборка deemix из исходников на HA base image
 # ================================================================
 
 # Base: HA image (содержит S6, bashio, tempio)
@@ -8,14 +8,14 @@ FROM ghcr.io/home-assistant/base:latest
 # Устанавливаем Node.js и инструменты для сборки
 RUN apk add --no-cache \
     nodejs \
-    npm \
     git \
     python3 \
     make \
     g++
 
-# Включаем pnpm (менеджер пакетов для deemix)
+# Включаем pnpm и turbo
 RUN corepack enable
+RUN pnpm add -g turbo
 
 # Клонируем исходники deemix
 RUN git clone --depth 1 \
@@ -24,11 +24,21 @@ RUN git clone --depth 1 \
 
 WORKDIR /app
 
+# Turbo prune — выделяем только webui и cli
+RUN turbo prune deemix-webui deemix-cli --docker
+
+# Переходим в pruned директорию
+WORKDIR /app/out
+
 # Устанавливаем зависимости
 RUN pnpm install --frozen-lockfile
 
-# Собираем webui (основной компонент)
-RUN pnpm turbo build --filter=deemix-webui...
+# Собираем webui и cli
+RUN pnpm turbo build --filter=deemix-webui... --filter=deemix-cli...
+
+# Удаляем исходники и build tools для уменьшения размера
+RUN apk del git python3 make g++ && \
+    rm -rf /var/cache/apk/*
 
 # ================================================================
 # Копируем наши HA-скрипты

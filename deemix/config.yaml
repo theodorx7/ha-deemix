@@ -9,20 +9,17 @@ arch:
 init: false
 startup: application
 boot: auto
-
-# Маппинг директорий HA
 map:
-  - addon_config:rw      # /config внутри контейнера
-  - media:rw             # /media внутри контейнера
-  - share:rw             # /share внутри контейнера
-  - ssl:rw               # /ssl для сертификатов
+  - addon_config:rw
+  - media:rw
+  - share:rw
+  - ssl:rw
 
 # Порт для веб-интерфейса
 ports:
   6595/tcp: 6595
 ports_description:
   6595/tcp: "Deemix WebUI"
-
 # Веб-интерфейс (прямой доступ)
 webui: "[PROTO:ssl]://[HOST]:[PORT:6595]"
 
@@ -31,15 +28,12 @@ panel_icon: "mdi:music-circle"
 panel_title: "Deemix"
 panel_admin: true
 
-# Опции по умолчанию
 options:
   server_port: 6595
   host: "0.0.0.0"
   ssl: false
   certfile: fullchain.pem
   keyfile: privkey.pem
-
-# Схема валидации
 schema:
   server_port: "port"
   host: "str"

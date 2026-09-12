@@ -1,6 +1,6 @@
 name: "Deemix"
 slug: "deemix"
-version: "4.0.7"
+version: "4.0.7-1"
 description: "Deemix - Music Downloader"
 url: "https://github.com/theodorx7/ha-deemix/"
 arch:
@@ -29,7 +29,7 @@ webui: "[PROTO:ssl]://[HOST]:[PORT:6595]"
 # Панель в боковой панели HA
 panel_icon: "mdi:music-circle"
 panel_title: "Deemix"
-panel_admin: false
+panel_admin: true
 
 # Опции по умолчанию
 options:

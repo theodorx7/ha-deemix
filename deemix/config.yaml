@@ -28,15 +28,9 @@ options:
   env_vars: []
   server_port: 6595
   host: "0.0.0.0"
-  ssl: false
-  certfile: fullchain.pem
-  keyfile: privkey.pem
 schema:
   env_vars:
     - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
       value: "str?"
   server_port: "port"
   host: "str"
-  ssl: bool
-  certfile: "str?"
-  keyfile: "str?"

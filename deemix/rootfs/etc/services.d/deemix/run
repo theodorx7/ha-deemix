@@ -1,1 +1,17 @@
+#!/usr/bin/env bashio
+# shellcheck shell=bash
+set -e
 
+bashio::log.info "Starting Deemix service..."
+
+# Установка umask
+UMASK_SET=$(bashio::config 'umask' 2>/dev/null || echo "022")
+umask "$UMASK_SET"
+
+# Переменные окружения для deemix
+export DEEMIX_DATA_DIR="/config"
+export DEEMIX_MUSIC_DIR="/media/deemix"
+
+# Запуск deemix webui
+bashio::log.info "Launching Deemix WebUI..."
+exec s6-setuidgid 1000 node /app/packages/webui/dist/main.js

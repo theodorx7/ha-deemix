@@ -1,1 +1,36 @@
+name: "Deemix"
+slug: "deemix"
+version: "4.0.7"
+image: "ghcr.io/bambanah/deemix"
+description: "Deemix - Music Downloader"
+url: "https://github.com/bambanah/deemix"
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: application
+boot: auto
+map:
+  - addon_config:rw
+  - media:rw
+  - share:rw
+  - ssl:rw
+ports:
+  6595/tcp: 6595
+ports_description:
+  6595/tcp: "Web UI Deemix"
+environment:
+  DEEMIX_DATA_DIR: "/config"
+  DEEMIX_MUSIC_DIR: "/media"
+webui: "http://[HOST]:[PORT:6595]"
+panel_icon: "mdi:music-circle"
+panel_title: "Deemix"
+panel_admin: true
 
+options:
+  server_port: 6595
+  host: "0.0.0.0"
+
+schema:
+  server_port: "port"
+  host: "str"

@@ -1,11 +1,21 @@
 configuration:
-  server_port:
-    name: "Server Port"
+  env_vars:
+    name: Environment Variables
     description: >-
-      Port for the Deemix web interface. Default is 6595.
-  host:
-    name: "Host"
-    description: >-
-      Host address to bind the server to. Use 0.0.0.0 for all interfaces.
+      Custom environment variables passed to the Deemix container.
+      Use DEEMIX_MUSIC_DIR to set the music download folder,
+      PUID/PGID for file ownership, or any other Deemix setting.
+    fields:
+      name:
+        name: Variable Name
+        description: >-
+          Environment variable name (e.g. DEEMIX_MUSIC_DIR, PUID, PGID).
+          Must contain only letters, numbers and underscores.
+      value:
+        name: Value
+        description: >-
+          Environment variable value (e.g. /media/Downloads/ for
+          DEEMIX_MUSIC_DIR, 911 for PUID).
+
 network:
   6595/tcp: "Deemix Web Interface"

@@ -5,6 +5,8 @@
 # Base: HA image (содержит S6, bashio, tempio)
 FROM ghcr.io/home-assistant/base:latest
 
+ARG BUILD_VERSION
+
 # Устанавливаем Node.js и инструменты для сборки
 RUN apk add --no-cache \
     nodejs \
@@ -54,7 +56,7 @@ RUN find /etc/cont-init.d/ -type f -name "*.sh" -exec chmod +x {} \; && \
 LABEL \
     io.hass.type="app" \
     io.hass.arch="aarch64|amd64" \
-    io.hass.version="4.0.7-1" \
+    io.hass.version=${BUILD_VERSION} \
     io.hass.name="Deemix" \
     io.hass.description="Deemix - Music Downloader" \
     io.hass.url="https://github.com/theodorx7/ha-deemix" \

@@ -22,7 +22,7 @@ ports_description:
 environment:
   DEEMIX_DATA_DIR: "/config"
   DEEMIX_MUSIC_DIR: "/media"
-webui: "http://[HOST]:[PORT:6595]"
+webui: "[PROTO:ssl]://[HOST]:[PORT:6595]"
 panel_icon: "mdi:music-circle"
 panel_title: "Deemix"
 panel_admin: true

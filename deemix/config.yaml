@@ -18,7 +18,7 @@ map:
 ports:
   6595/tcp: 6595
 ports_description:
-  6595/tcp: "Web UI Deemix"
+  6595/tcp: "WebUI Deemix"
 environment:
   DEEMIX_DATA_DIR: "/config"
   DEEMIX_MUSIC_DIR: "/media"

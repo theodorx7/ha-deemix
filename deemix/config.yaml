@@ -24,11 +24,6 @@ ports_description:
 # Веб-интерфейс (прямой доступ)
 webui: "[PROTO:ssl]://[HOST]:[PORT:6595]"
 
-# Панель в боковой панели HA
-panel_icon: "mdi:music-circle"
-panel_title: "Deemix"
-panel_admin: true
-
 options:
   server_port: 6595
   host: "0.0.0.0"

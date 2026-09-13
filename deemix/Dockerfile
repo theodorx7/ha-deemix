@@ -1,8 +1,5 @@
 FROM ghcr.io/bambanah/deemix:v4.7.0
 
-# Defaults for LSIO user mapping (overridable via env_vars)
-ENV PUID=911 PGID=911
-
 # Fail fast on init errors
 ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
 

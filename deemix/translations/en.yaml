@@ -11,7 +11,7 @@ configuration:
         name: Value
         description: >-
           Environment variable value (e.g. /media/Downloads/ for
-          DEEMIX_MUSIC_DIR, 911 for PUID).
+          DEEMIX_MUSIC_DIR, 1000 for PUID).
 
 network:
   6595/tcp: "Deemix Web Interface"

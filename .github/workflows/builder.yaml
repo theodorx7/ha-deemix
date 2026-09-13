@@ -88,7 +88,6 @@ jobs:
             io.hass.description=${{ needs.init.outputs.description }}
             ${{ needs.init.outputs.url && format('io.hass.url={0}', needs.init.outputs.url) || '' }}
           push: ${{ github.event_name == 'push' }}
-          skip-existing: ${{ needs.init.outputs.version }}
           version: ${{ needs.init.outputs.version }}
 
   manifest:

@@ -17,12 +17,10 @@ map:
   - media:rw
   - share:rw
 
-# Порт для веб-интерфейса
 ports:
   6595/tcp: 6595
 ports_description:
   6595/tcp: "Deemix WebUI"
-# Веб-интерфейс (прямой доступ)
 webui: "http://[HOST]:[PORT:6595]"
 
 options:

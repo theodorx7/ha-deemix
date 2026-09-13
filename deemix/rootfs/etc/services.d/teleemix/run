@@ -1,0 +1,37 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Community Home Assistant Add-on: Deemix
+# Teleemix Telegram Bot Service
+# ==============================================================================
+
+# Declare variables
+declare TELEGRAM_ENABLED
+
+# Check if Telegram bot is enabled
+TELEGRAM_ENABLED="${TELEGRAM_ENABLED:-false}"
+
+if [[ "${TELEGRAM_ENABLED}" == "true" ]]; then
+    bashio::log.info "Starting Teleemix Telegram Bot..."
+
+    # Verify required environment variables
+    if [[ -z "${TELEGRAM_TOKEN}" ]]; then
+        bashio::log.error "TELEGRAM_TOKEN is not set but Telegram is enabled!"
+        bashio::log.error "Please configure telegram_token in addon options."
+        exec sleep infinity
+    fi
+
+    # Create data directory for teleemix
+    mkdir -p /data/teleemix
+
+    # Log configuration (without exposing secrets)
+    bashio::log.info "DEEMIX_URL: ${DEEMIX_URL}"
+    bashio::log.info "DEEMIX_BITRATE: ${DEEMIX_BITRATE}"
+    bashio::log.info "DEEMIX_BITRATE_LOCK: ${DEEMIX_BITRATE_LOCK}"
+
+    # Run Teleemix bot
+    exec /usr/local/bin/teleemix
+else
+    bashio::log.info "Teleemix Telegram Bot is disabled"
+    # Keep service running (S6 expects a long-running process)
+    exec sleep infinity
+fi

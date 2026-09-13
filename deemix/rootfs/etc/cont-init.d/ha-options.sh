@@ -24,7 +24,7 @@ done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.js
 TELEGRAM_ENABLED=$(jq -r '.telegram_enabled // "false"' /data/options.json 2>/dev/null || echo "false")
 if [ "${TELEGRAM_ENABLED}" = "true" ]; then
     set_env "TELEGRAM_ENABLED" "${TELEGRAM_ENABLED}"
-    if [ "${TELEGRAM_ENABLED}" = "true" ]; then
+
         # Основные настройки Teleemix
         set_env "TELEGRAM_TOKEN" "$(jq -r '.telegram_token // ""' /data/options.json)"
         set_env "DEEMIX_ARL" "$(jq -r '.deemix_arl // ""' /data/options.json)"
@@ -42,9 +42,9 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
         set_env "USERS_FILE" "/data/teleemix/users.json"
         set_env "RUST_LOG" "info"
 
-        echo "[info] Teleemix Telegram bot enabled"
-    else
-        echo "[info] Teleemix Telegram bot disabled"
+    echo "[info] Teleemix Telegram bot enabled"
+else
+    echo "[info] Teleemix Telegram bot disabled"
 fi
 # --- КОНЕЦ опций Teleemix ---
 

@@ -20,6 +20,36 @@ while IFS= read -r -d '' key && IFS= read -r value; do
     echo "[info] env: ${key}=${value}"
 done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.json)
 
+# --- Teleemix опции ---
+if jq -e '.telegram_enabled' /data/options.json >/dev/null 2>&1; then
+    TELEGRAM_ENABLED=$(jq -r '.telegram_enabled' /data/options.json)
+    set_env "TELEGRAM_ENABLED" "${TELEGRAM_ENABLED}"
+
+    if [ "${TELEGRAM_ENABLED}" = "true" ]; then
+        # Основные настройки Teleemix
+        set_env "TELEGRAM_TOKEN" "$(jq -r '.telegram_token // ""' /data/options.json)"
+        set_env "DEEMIX_ARL" "$(jq -r '.deemix_arl // ""' /data/options.json)"
+        set_env "DEEMIX_BITRATE" "$(jq -r '.deemix_bitrate // 9' /data/options.json)"
+        set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
+
+        # Опциональные API ключи
+        set_env "AUDD_API_KEY" "$(jq -r '.audd_api_key // ""' /data/options.json)"
+        set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
+        set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"
+
+        # Внутренние настройки для работы в одном контейнере с deemix
+        set_env "DEEMIX_URL" "http://localhost:6595"
+        set_env "DEEMIX_SINGLE_USER" "true"
+        set_env "USERS_FILE" "/data/teleemix/users.json"
+        set_env "RUST_LOG" "info"
+
+        echo "[info] Teleemix Telegram bot enabled"
+    else
+        echo "[info] Teleemix Telegram bot disabled"
+    fi
+fi
+# --- КОНЕЦ опций Teleemix ---
+
 # Sync DEEMIX_MUSIC_DIR to config.json (env_vars takes precedence)
 if [ -n "${DEEMIX_MUSIC_DIR:-}" ]; then
     CONFIG_FILE="/config/config.json"

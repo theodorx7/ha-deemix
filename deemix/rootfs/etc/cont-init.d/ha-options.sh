@@ -56,10 +56,7 @@ if [ -n "${DEEMIX_MUSIC_DIR:-}" ]; then
         CURRENT=$(jq -r '.downloadLocation // empty' "$CONFIG_FILE" 2>/dev/null || echo "")
         if [ "$CURRENT" != "$DESIRED" ]; then
             echo "[info] Syncing downloadLocation to ${DESIRED} (from env_vars)"
-            jq --arg loc "$DESIRED" '.downloadLocation = $loc' "$CONFIG_FILE" > /tmp/config.tmp && \
-                mv /tmp/config.tmp "$CONFIG_FILE"
-                chown "${PUID:-911}:${PGID:-911}" "$CONFIG_FILE" && \
-                chmod 664 "$CONFIG_FILE"
+            jq --arg loc "$DESIRED" '.downloadLocation = $loc' "$CONFIG_FILE" | cat > "$CONFIG_FILE"
         fi
     fi
 fi

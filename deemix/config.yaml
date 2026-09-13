@@ -22,7 +22,6 @@ ports_description:
   6595/tcp: "Deemix WebUI"
 webui: "http://[HOST]:[PORT:6595]"
 
-
 options:
   env_vars:
     - name: DEEMIX_MUSIC_DIR

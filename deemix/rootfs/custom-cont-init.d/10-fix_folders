@@ -22,12 +22,16 @@ else
 	chown -R "$PUID":"$PGID" "$DEEMIX_DATA_DIR"
 fi
 
-
-# Fix misconfigured download locations. The container's download map is always /downloads.
 if [ -f "/config/config.json" ]; then
 
-# Disabled: jq was overwriting the user-configured downloadLocation
-# in config.json to /downloads on every container restart, ignoring the folder set in the addon UI settings.
-#	jq '.downloadLocation = "/downloads"' /config/config.json >tmp.$$.json && mv tmp.$$.json /config/config.json
-	chown "$PUID":"$PGID" /config/config.json
+    # --- LOCAL PATCH: disabled jq rewrite of downloadLocation ---
+    # Reason: jq was resetting the user-configured downloadLocation in config.json
+    # to /downloads on every container restart, ignoring the folder set in the add-on UI settings.
+    # Original:
+    # Fix misconfigured download locations. The container's download map is always /downloads.
+    #	jq '.downloadLocation = "/downloads"' /config/config.json >tmp.$$.json && mv tmp.$$.json /config/config.json
+    # --- END LOCAL PATCH ---
+
+    chown "$PUID":"$PGID" /config/config.json
 fi
+

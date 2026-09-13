@@ -39,7 +39,6 @@ schema:
   env_vars:
     - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
       value: "str"
-      value: "str"
   # НОВЫЕ СХЕМЫ для Teleemix:
   telegram_enabled: bool
   telegram_token: "str?"

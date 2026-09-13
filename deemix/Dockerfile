@@ -11,8 +11,6 @@ COPY --from=ghcr.io/theodorx7/ha-teleemix:latest /teleemix /usr/local/bin/teleem
 RUN chmod +x /etc/cont-init.d/* /custom-cont-init.d/* /usr/local/bin/teleemix && \
     find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; 2>/dev/null || true
 
-RUN chmod +x /etc/cont-init.d/* /custom-cont-init.d/*
-
 LABEL \
     io.hass.name="Deemix with Telegram Bot" \
     io.hass.description="Deemix - Music Downloader with Telegram Bot" \

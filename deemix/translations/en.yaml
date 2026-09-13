@@ -14,4 +14,4 @@ configuration:
           DEEMIX_MUSIC_DIR, 1000 for PUID).
 
 network:
-  6595/tcp: "Deemix Web Interface"
+  6595/tcp: "Deemix WebIU"

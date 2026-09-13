@@ -21,10 +21,9 @@ while IFS= read -r -d '' key && IFS= read -r value; do
 done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.json)
 
 # --- Teleemix опции ---
-if jq -e '.telegram_enabled' /data/options.json >/dev/null 2>&1; then
-    TELEGRAM_ENABLED=$(jq -r '.telegram_enabled' /data/options.json)
+TELEGRAM_ENABLED=$(jq -r '.telegram_enabled // "false"' /data/options.json 2>/dev/null || echo "false")
+if [ "${TELEGRAM_ENABLED}" = "true" ]; then
     set_env "TELEGRAM_ENABLED" "${TELEGRAM_ENABLED}"
-
     if [ "${TELEGRAM_ENABLED}" = "true" ]; then
         # Основные настройки Teleemix
         set_env "TELEGRAM_TOKEN" "$(jq -r '.telegram_token // ""' /data/options.json)"
@@ -46,7 +45,6 @@ if jq -e '.telegram_enabled' /data/options.json >/dev/null 2>&1; then
         echo "[info] Teleemix Telegram bot enabled"
     else
         echo "[info] Teleemix Telegram bot disabled"
-    fi
 fi
 # --- КОНЕЦ опций Teleemix ---
 

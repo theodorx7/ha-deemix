@@ -10,7 +10,7 @@ configuration:
       value:
         name: Value
         description: >-
-          Environment variable value (e.g. /media/Downloads/ for
+          Environment variable value (e.g. /media/downloads/ for
           DEEMIX_MUSIC_DIR, 1000 for PUID).
 
 network:

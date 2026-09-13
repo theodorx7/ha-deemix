@@ -16,7 +16,6 @@ map:
   - addon_config:rw
   - media:rw
   - share:rw
-
 ports:
   6595/tcp: 6595
 ports_description:

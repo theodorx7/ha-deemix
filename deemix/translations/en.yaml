@@ -1,10 +1,6 @@
 configuration:
   env_vars:
     name: Environment Variables
-    description: >-
-      Custom environment variables passed to the Deemix container.
-      Use DEEMIX_MUSIC_DIR to set the music download folder,
-      PUID/PGID for file ownership, or any other Deemix setting.
     fields:
       name:
         name: Variable Name

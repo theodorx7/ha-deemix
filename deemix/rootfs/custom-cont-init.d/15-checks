@@ -1,7 +1,9 @@
 #!/usr/bin/with-contenv bash
 # shellcheck disable=SC1008
 printf '[cont-init.d] Testing Access\n'
-if [ -w "$DEEMIX_MUSIC_DIR" ]; then
+
+if [ -w "$DEEMIX_MUSIC_DIR" ]; then  # The path for the downloads folder has been changed.
+
     printf '%-50s %2s %-5s \n' "[cont-init.d] Download Folder Write Access" ":" "Success"
 else
     printf '%-50s %2s %-5s \n' "[cont-init.d] Download Folder Write Access" ":" "Failure"

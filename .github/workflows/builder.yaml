@@ -109,4 +109,3 @@ jobs:
             ${{ needs.init.outputs.version }}
             latest
           registry-prefix: ${{ needs.init.outputs.registry_prefix }}
-          skip-existing: ${{ needs.init.outputs.version }}

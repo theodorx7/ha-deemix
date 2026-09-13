@@ -26,7 +26,26 @@ options:
   env_vars:
     - name: DEEMIX_MUSIC_DIR
       value: /media/deemix_downloads/
+  # НОВЫЕ ОПЦИИ для Teleemix:
+  telegram_enabled: false
+  telegram_token: ""
+  deemix_arl: ""
+  deemix_bitrate: 9
+  deemix_bitrate_lock: false
+  audd_api_key: ""
+  openai_api_key: ""
+  whisper_url: ""
 schema:
   env_vars:
     - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
       value: "str"
+      value: "str"
+  # НОВЫЕ СХЕМЫ для Teleemix:
+  telegram_enabled: bool
+  telegram_token: "str?"
+  deemix_arl: "password"
+  deemix_bitrate: "list(1|3|9)?"
+  deemix_bitrate_lock: bool
+  audd_api_key: "password"
+  openai_api_key: "password"
+  whisper_url: "str?"

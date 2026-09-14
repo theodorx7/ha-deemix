@@ -57,6 +57,7 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
 
         # Внутренние настройки для работы в одном контейнере с deemix
         set_env "DEEMIX_URL" "http://localhost:6595"
+        set_env "DEEMIX_SINGLE_USER" "true"
         set_env "USERS_FILE" "/data/teleemix/users.json"
         set_env "RUST_LOG" "info"
 

@@ -3,9 +3,8 @@ name: Build app
 on:
   workflow_dispatch:
 #  push:
-#    branches: [main]
-#  pull_request:
-#    branches: [main]
+#    branches: 
+#      - main
 
 permissions:
   contents: read
@@ -98,13 +97,12 @@ jobs:
             io.hass.name=${{ needs.init.outputs.name }}
             io.hass.description=${{ needs.init.outputs.description }}
             ${{ needs.init.outputs.url && format('io.hass.url={0}', needs.init.outputs.url) || '' }}
-          push: ${{ github.event_name == 'push' }}
+          push: true
           version: ${{ needs.init.outputs.version }}
 
   manifest:
     name: Publish multi-arch manifest
     needs: [init, build]
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       id-token: write

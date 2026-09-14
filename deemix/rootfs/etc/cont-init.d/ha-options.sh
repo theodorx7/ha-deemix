@@ -48,4 +48,17 @@ else
 fi
 # --- КОНЕЦ опций Teleemix ---
 
+# Sync DEEMIX_MUSIC_DIR to config.json (env_vars takes precedence)
+if [ -n "${DEEMIX_MUSIC_DIR:-}" ]; then
+    CONFIG_FILE="/config/config.json"
+    DESIRED="${DEEMIX_MUSIC_DIR%/}/"
+    if [ -f "$CONFIG_FILE" ]; then
+        CURRENT=$(jq -r '.downloadLocation // empty' "$CONFIG_FILE" 2>/dev/null || echo "")
+        if [ "$CURRENT" != "$DESIRED" ]; then
+            echo "[info] Syncing downloadLocation to ${DESIRED} (from env_vars)"
+            jq --arg loc "$DESIRED" '.downloadLocation = $loc' "$CONFIG_FILE" | cat > "$CONFIG_FILE"
+        fi
+    fi
+fi
+
 echo "[info] Home Assistant options applied"

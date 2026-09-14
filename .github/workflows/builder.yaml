@@ -37,14 +37,30 @@ jobs:
           path: "./deemix"
       - name: Normalize app information
         id: normalize
+        env:
+          RAW_IMAGE: ${{ steps.info.outputs.image }}
+          RAW_VERSION: ${{ steps.info.outputs.version }}
+          RAW_NAME: ${{ steps.info.outputs.name }}
+          RAW_DESCRIPTION: ${{ steps.info.outputs.description }}
+          RAW_URL: ${{ steps.info.outputs.url }}
         run: |
-          image=${{ steps.info.outputs.image }}
+          strip_quotes() {
+            local value="$1"
+            value="${value#\"}"
+            value="${value%\"}"
+            printf '%s' "$value"
+          }
+
+          image="$(strip_quotes "${RAW_IMAGE}")"
           echo "image_name=${image##*/}" >> "$GITHUB_OUTPUT"
           echo "registry_prefix=${image%/*}" >> "$GITHUB_OUTPUT"
-          echo "version=${{ steps.info.outputs.version }}" >> "$GITHUB_OUTPUT"
-          echo "name=${{ steps.info.outputs.name }}" >> "$GITHUB_OUTPUT"
-          echo "description=${{ steps.info.outputs.description }}" >> "$GITHUB_OUTPUT"
-          url=${{ steps.info.outputs.url }}
+          version="$(strip_quotes "${RAW_VERSION}")"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          name="$(strip_quotes "${RAW_NAME}")"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          description="$(strip_quotes "${RAW_DESCRIPTION}")"
+          echo "description=${description}" >> "$GITHUB_OUTPUT"
+          url="$(strip_quotes "${RAW_URL}")"
           if [[ -n "$url" && "$url" != "null" ]]; then
             echo "url=${url}" >> "$GITHUB_OUTPUT"
           fi

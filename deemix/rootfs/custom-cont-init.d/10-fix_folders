@@ -9,14 +9,14 @@ mkdir -p "$DEEMIX_DATA_DIR"
 printf '[cont-init.d] Fixing folder permissions\n'
 
 if [ -n "${DISABLE_OWNERSHIP_CHECK}" ] || [ -n "${DISABLE_OWNERSHIP_CHECK_MUSIC}" ] || { [ "${PUID}" = "0" ] && [ "${PGID}" = "0" ]; }; then
-	printf '[cont-init.d] Music folder ownership check disabled by environment variable\n'
+    printf '[cont-init.d] Music folder ownership check disabled (env var or PUID=0)\n'
 else
     printf '[cont-init.d] Fixing music folder permissions\n'
     chown -R abc:abc "$DEEMIX_MUSIC_DIR" 2>/dev/null || printf '[cont-init.d] WARNING: chown music dir failed (NTFS/SMB?)\n'
 fi
 
-if [ -n "${DISABLE_OWNERSHIP_CHECK}" ] || [ -n "${DISABLE_OWNERSHIP_CHECK_DATA}" ]; then
-	printf '[cont-init.d] Data folder ownership check disabled by environment variable\n'
+if [ -n "${DISABLE_OWNERSHIP_CHECK}" ] || [ -n "${DISABLE_OWNERSHIP_CHECK_DATA}" ] || { [ "${PUID}" = "0" ] && [ "${PGID}" = "0" ]; }; then
+    printf '[cont-init.d] Data folder ownership check disabled (env var or PUID=0)\n'
 else
     printf '[cont-init.d] Fixing data folder permissions\n'
     chown -R abc:abc "$DEEMIX_DATA_DIR" 2>/dev/null || printf '[cont-init.d] WARNING: chown data dir failed\n'

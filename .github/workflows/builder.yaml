@@ -38,29 +38,24 @@ jobs:
       - name: Normalize app information
         id: normalize
         env:
-          RAW_IMAGE: ${{ steps.info.outputs.image }}
-          RAW_VERSION: ${{ steps.info.outputs.version }}
-          RAW_NAME: ${{ steps.info.outputs.name }}
-          RAW_DESCRIPTION: ${{ steps.info.outputs.description }}
-          RAW_URL: ${{ steps.info.outputs.url }}
+          IMAGE: ${{ steps.info.outputs.image }}
+          VERSION: ${{ steps.info.outputs.version }}
+          NAME: ${{ steps.info.outputs.name }}
+          DESCRIPTION: ${{ steps.info.outputs.description }}
+          URL: ${{ steps.info.outputs.url }}
         run: |
-          strip_quotes() {
-            local value="$1"
-            value="${value#\"}"
-            value="${value%\"}"
-            printf '%s' "$value"
-          }
+          image="${IMAGE#\"}"; image="${image%\"}"
+          version="${VERSION#\"}"; version="${version%\"}"
+          name="${NAME#\"}"; name="${name%\"}"
+          description="${DESCRIPTION#\"}"; description="${description%\"}"
+          url="${URL#\"}"; url="${url%\"}"
 
-          image="$(strip_quotes "${RAW_IMAGE}")"
           echo "image_name=${image##*/}" >> "$GITHUB_OUTPUT"
           echo "registry_prefix=${image%/*}" >> "$GITHUB_OUTPUT"
-          version="$(strip_quotes "${RAW_VERSION}")"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          name="$(strip_quotes "${RAW_NAME}")"
           echo "name=${name}" >> "$GITHUB_OUTPUT"
-          description="$(strip_quotes "${RAW_DESCRIPTION}")"
           echo "description=${description}" >> "$GITHUB_OUTPUT"
-          url="$(strip_quotes "${RAW_URL}")"
+
           if [[ -n "$url" && "$url" != "null" ]]; then
             echo "url=${url}" >> "$GITHUB_OUTPUT"
           fi

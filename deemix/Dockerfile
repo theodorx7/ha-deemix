@@ -8,7 +8,7 @@ COPY rootfs/ /
 COPY --from=ghcr.io/theodorx7/ha-teleemix:latest /teleemix /usr/local/bin/teleemix
 
 # Убеждаемся что binary исполняемый + добавляем S6 сервисы
-RUN chmod +x /etc/cont-init.d/* /custom-cont-init.d/* /usr/local/bin/teleemix && \
+RUN chmod +x /custom-cont-init.d/* /usr/local/bin/teleemix && \
     find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; 2>/dev/null || true
 
 LABEL \

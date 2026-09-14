@@ -25,7 +25,7 @@ webui: "http://[HOST]:[PORT:6595]"
 options:
   env_vars:
     - name: DEEMIX_MUSIC_DIR
-      value: /media/MUSIC/deemix_downloads/
+      value: /media/MUSIC/! deemix_downloads/
   # НОВЫЕ ОПЦИИ для Teleemix:
   telegram_enabled: false
   telegram_token: ""

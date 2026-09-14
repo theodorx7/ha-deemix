@@ -1,6 +1,6 @@
 name: "Deemix"
 slug: "deemix"
-version: "4.7.0-1"
+version: "4.7.0-2"
 description: "Deemix - Music Downloader"
 url: "https://github.com/theodorx7/ha-deemix/"
 image: "ghcr.io/theodorx7/ha-deemix"
@@ -26,10 +26,6 @@ options:
   env_vars:
     - name: DEEMIX_MUSIC_DIR
       value: /media/MUSIC/! deemix_downloads/
-    - name: PUID
-      value: "1000"
-    - name: PGID
-      value: "1000"
   # НОВЫЕ ОПЦИИ для Teleemix:
   telegram_enabled: true
   telegram_token: ""

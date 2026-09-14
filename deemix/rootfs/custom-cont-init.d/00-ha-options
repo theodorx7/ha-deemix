@@ -20,20 +20,24 @@ while IFS= read -r -d '' key && IFS= read -r value; do
     echo "[info] env: ${key}=${value}"
 done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.json)
 
-# --- NEW: Apply PUID/PGID directly to user abc ---
+# --- Apply PUID/PGID to user abc (default 1000:1000) ---
 if [ -n "${PUID}" ] && [ -n "${PGID}" ]; then
-    echo "[info] Applying PUID=${PUID}, PGID=${PGID} to user abc"
-    if ! id abc &>/dev/null; then
-        echo "[error] User 'abc' not found. Base image may be corrupted."
-        exit 1
-    fi
-    usermod -o -u "${PUID}" abc 2>/dev/null || true
-    groupmod -o -g "${PGID}" abc 2>/dev/null || true
-    if [ "${PUID}" != "0" ]; then
-        chown -R abc:abc /config 2>/dev/null || echo "[warn] chown /config failed, continuing"
-    fi
-    echo "[info] PUID/PGID applied successfully"
+    echo "[info] PUID=${PUID}, PGID=${PGID} from env_vars"
+else
+    echo "[info] PUID/PGID not set or incomplete — using default 1000:1000"
+    set_env "PUID" "1000"
+    set_env "PGID" "1000"
 fi
+if ! id abc &>/dev/null; then
+    echo "[error] User 'abc' not found. Base image may be corrupted."
+    exit 1
+fi
+usermod -o -u "${PUID}" abc 2>/dev/null || true
+groupmod -o -g "${PGID}" abc 2>/dev/null || true
+if [ "${PUID}" != "0" ]; then
+    chown -R abc:abc /config 2>/dev/null || echo "[warn] chown /config failed, continuing"
+fi
+echo "[info] PUID/PGID applied successfully"
 
 # --- Teleemix опции ---
 TELEGRAM_ENABLED=$(jq -r '.telegram_enabled // "false"' /data/options.json 2>/dev/null || echo "false")
@@ -53,7 +57,6 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
 
         # Внутренние настройки для работы в одном контейнере с deemix
         set_env "DEEMIX_URL" "http://localhost:6595"
-        set_env "DEEMIX_SINGLE_USER" "true"
         set_env "USERS_FILE" "/data/teleemix/users.json"
         set_env "RUST_LOG" "info"
 

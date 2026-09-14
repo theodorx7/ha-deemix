@@ -13,11 +13,11 @@ RUN chmod +x /custom-cont-init.d/* /usr/local/bin/teleemix && \
 
 LABEL \
     io.hass.name="Deemix + Teleemix" \
-    io.hass.description="Deemix - Music Downloader with Teleemix (Telegram Bot)" \
+    io.hass.description="Deemix - Music Downloader with Telegram Bot" \
     io.hass.type="app" \
     io.hass.url="https://github.com/theodorx7/ha-deemix" \
     org.opencontainers.image.title="Home Assistant App: Deemix + Teleemix" \
-    org.opencontainers.image.description="Deemix - Music Downloader with Teleemix (Telegram Bot)" \
+    org.opencontainers.image.description="Deemix - Music Downloader with Telegram Bot" \
     org.opencontainers.image.source="https://github.com/theodorx7/ha-deemix" \
     org.opencontainers.image.licenses="GPL-3.0"
     

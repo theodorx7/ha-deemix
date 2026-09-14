@@ -27,8 +27,8 @@ if [ -n "${PUID}" ] && [ -n "${PGID}" ]; then
         echo "[error] User 'abc' not found. Base image may be corrupted."
         exit 1
     fi
-    usermod -o -u "${PUID}" abc
-    groupmod -o -g "${PGID}" abc
+    usermod -o -u "${PUID}" abc 2>/dev/null || true
+    groupmod -o -g "${PGID}" abc 2>/dev/null || true
     chown -R abc:abc /config
     echo "[info] PUID/PGID applied successfully"
 fi

@@ -23,6 +23,10 @@ done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.js
 # --- NEW: Apply PUID/PGID directly to user abc ---
 if [ -n "${PUID}" ] && [ -n "${PGID}" ]; then
     echo "[info] Applying PUID=${PUID}, PGID=${PGID} to user abc"
+    if ! id abc &>/dev/null; then
+        echo "[error] User 'abc' not found. Base image may be corrupted."
+        exit 1
+    fi
     usermod -o -u "${PUID}" abc
     groupmod -o -g "${PGID}" abc
     chown -R abc:abc /config

@@ -30,7 +30,7 @@ if [ -n "${PUID}" ] && [ -n "${PGID}" ]; then
     usermod -o -u "${PUID}" abc 2>/dev/null || true
     groupmod -o -g "${PGID}" abc 2>/dev/null || true
     if [ "${PUID}" != "0" ]; then
-        chown -R abc:abc /config
+        chown -R abc:abc /config 2>/dev/null || echo "[warn] chown /config failed, continuing"
     fi
     echo "[info] PUID/PGID applied successfully"
 fi
@@ -71,7 +71,7 @@ if [ -n "${DEEMIX_MUSIC_DIR:-}" ]; then
         CURRENT=$(jq -r '.downloadLocation // empty' "$CONFIG_FILE" 2>/dev/null || echo "")
         if [ "$CURRENT" != "$DESIRED" ]; then
             echo "[info] Syncing downloadLocation to ${DESIRED} (from env_vars)"
-            jq --arg loc "$DESIRED" '.downloadLocation = $loc' "$CONFIG_FILE" | cat > "$CONFIG_FILE"
+            jq --arg loc "$DESIRED" '.downloadLocation = $loc' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
         fi
     fi
 fi

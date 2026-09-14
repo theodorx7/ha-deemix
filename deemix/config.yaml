@@ -1,6 +1,6 @@
 name: "Deemix"
 slug: "deemix"
-version: "4.7.0-0"
+version: "4.7.0-1"
 description: "Deemix - Music Downloader"
 url: "https://github.com/theodorx7/ha-deemix/"
 image: "ghcr.io/theodorx7/ha-deemix"

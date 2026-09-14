@@ -4,7 +4,7 @@
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
 
-# Home Assistant Add-on: Deemix
+# Home Assistant Add-on: Deemix + Telemix (Telegram Bot)
 
 > ⚠️ **WIP: IN DEVELOPMENT**
 > The code is not working yet. Subscribe to updates (**Watch -> Releases**) and wait for the first release.

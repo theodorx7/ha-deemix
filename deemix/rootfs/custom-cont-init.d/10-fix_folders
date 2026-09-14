@@ -12,14 +12,14 @@ if [ -n "${DISABLE_OWNERSHIP_CHECK}" ] || [ -n "${DISABLE_OWNERSHIP_CHECK_MUSIC}
 	printf '[cont-init.d] Music folder ownership check disabled by environment variable\n'
 else
     printf '[cont-init.d] Fixing music folder permissions\n'
-    chown -R abc:abc "$DEEMIX_MUSIC_DIR"
+    chown -R abc:abc "$DEEMIX_MUSIC_DIR" 2>/dev/null || printf '[cont-init.d] WARNING: chown music dir failed (NTFS/SMB?)\n'
 fi
 
 if [ -n "${DISABLE_OWNERSHIP_CHECK}" ] || [ -n "${DISABLE_OWNERSHIP_CHECK_DATA}" ]; then
 	printf '[cont-init.d] Data folder ownership check disabled by environment variable\n'
 else
     printf '[cont-init.d] Fixing data folder permissions\n'
-    chown -R abc:abc "$DEEMIX_DATA_DIR"
+    chown -R abc:abc "$DEEMIX_DATA_DIR" 2>/dev/null || printf '[cont-init.d] WARNING: chown data dir failed\n'
 fi
 
 if [ -f "/config/config.json" ]; then
@@ -32,5 +32,5 @@ if [ -f "/config/config.json" ]; then
     #	jq '.downloadLocation = "/downloads"' /config/config.json >tmp.$$.json && mv tmp.$$.json /config/config.json
     # --- END LOCAL PATCH ---
 
-    chown abc:abc /config/config.json
+    chown abc:abc /config/config.json 2>/dev/null || true
 fi

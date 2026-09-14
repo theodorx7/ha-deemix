@@ -16,26 +16,11 @@ if [[ "${TELEGRAM_ENABLED}" == "true" ]]; then
         exec sleep infinity
     fi
 
-    # Wait for Deemix to be ready (port 6595)
-    echo "[info] Waiting for Deemix to be ready on port 6595..."
-    ATTEMPTS=0
-    MAX_ATTEMPTS=30
-    
-    while [ ${ATTEMPTS} -lt ${MAX_ATTEMPTS} ]; do
-        if curl --fail -s http://localhost:6595/ >/dev/null 2>&1; then
-            echo "[info] Deemix is ready!"
-            break
-        fi
-        
-        ATTEMPTS=$((ATTEMPTS + 1))
-        echo "[info] Deemix not ready yet (attempt ${ATTEMPTS}/${MAX_ATTEMPTS})..."
-        sleep 2
+    # Wait for Deemix to listen on port 6595
+    for _ in $(seq 1 60); do
+        (echo > /dev/tcp/127.0.0.1/6595) 2>/dev/null && break
+        sleep 1
     done
-    
-    if [ ${ATTEMPTS} -ge ${MAX_ATTEMPTS} ]; then
-        echo "[error] Deemix did not become ready within 60 seconds"
-        echo "[error] Teleemix will start anyway, but may not function correctly"
-    fi
 
     # Create data directory for teleemix
     mkdir -p /data/teleemix

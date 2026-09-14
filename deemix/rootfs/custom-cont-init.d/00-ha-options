@@ -29,7 +29,9 @@ if [ -n "${PUID}" ] && [ -n "${PGID}" ]; then
     fi
     usermod -o -u "${PUID}" abc 2>/dev/null || true
     groupmod -o -g "${PGID}" abc 2>/dev/null || true
-    chown -R abc:abc /config
+    if [ "${PUID}" != "0" ]; then
+        chown -R abc:abc /config
+    fi
     echo "[info] PUID/PGID applied successfully"
 fi
 

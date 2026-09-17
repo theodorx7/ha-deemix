@@ -73,7 +73,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-      packages: write
+#      packages: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.init.outputs.build_matrix) }}
@@ -107,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      packages: write
+#      packages: write
     steps:
       - name: Publish multi-arch manifest
         uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.06.0

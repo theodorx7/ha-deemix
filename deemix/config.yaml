@@ -32,8 +32,8 @@ options:
   deemix_arl: ""
   deemix_bitrate: 9
   deemix_bitrate_lock: false
-  whitelist_enabled: true
-  whitelist_ids: ""
+  access_control_enabled: true
+  allowed_user_telegram_ids: ""
   audd_api_key: ""
   openai_api_key: ""
   whisper_url: ""
@@ -47,8 +47,8 @@ schema:
   deemix_arl: "str?"
   deemix_bitrate: "list(1|3|9)"
   deemix_bitrate_lock: bool
-  whitelist_enabled: bool
-  whitelist_ids: "str?"
+  access_control_enabled: bool
+  allowed_user_telegram_ids: "str?"
   audd_api_key: "str?"
   openai_api_key: "str?"
   whisper_url: "str?"

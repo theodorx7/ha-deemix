@@ -50,7 +50,7 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
         set_env "DEEMIX_BITRATE" "$(jq -r '.deemix_bitrate // 9' /data/options.json)"
         set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
 
-        # Опциональные API ключи
+        # Опциональные API ключи - подлежит удалению
         set_env "AUDD_API_KEY" "$(jq -r '.audd_api_key // ""' /data/options.json)"
         set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
         set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"

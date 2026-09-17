@@ -43,6 +43,18 @@ configuration:
     description: >-
       Prevent users from changing the download quality
       via the Telegram bot /settings command.
+  whitelist_enabled:
+    name: "Enable User Whitelist"
+    description: >-
+      Restrict bot access to only whitelisted user IDs.
+      Leave false to allow all users (default).
+  whitelist_ids:
+    name: "Whitelisted User IDs"
+    description: >-
+      Comma-separated list of Telegram user IDs allowed to use the bot.
+      Get your ID via @userinfobot on Telegram.
+      Spaces around IDs are trimmed automatically. Invalid IDs are ignored.
+      Example: 123456789,987654321
   audd_api_key:
     name: AudD API Key
     description: >-

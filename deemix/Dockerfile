@@ -1,6 +1,7 @@
 # ================================================================
 # Stage 1: Building a Telegram Bot from Source (Rust)
 # ================================================================
+
 FROM rust:latest AS telegram_bot-builder
 ARG TARGETARCH
 

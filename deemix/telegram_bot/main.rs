@@ -972,12 +972,6 @@ I connect to your personal deemix server and queue music downloads. Just tell me
         _ => {}
     }
 
-    // ── Voice notes ──
-    if let Some(voice) = msg.voice() {
-        handle_voice_note(&bot, &msg, &state, voice.file.id.clone()).await?;
-        return Ok(());
-    }
-
     // ── Streaming service URLs ──
     if SPOTIFY_TRACK_RE.is_match(&text) || SPOTIFY_ALBUM_RE.is_match(&text)
         || SPOTIFY_PLAYLIST_RE.is_match(&text) || YOUTUBE_RE.is_match(&text)
@@ -1010,7 +1004,6 @@ I connect to your personal deemix server and queue music downloads. Just tell me
 }
 
 // ── Callback Handler ──────────────────────────────────────────────────────────
-
 async fn handle_callback(
     bot: Bot,
     q: CallbackQuery,
@@ -1241,7 +1234,6 @@ async fn handle_callback(
 }
 
 // ── Core Helpers ──────────────────────────────────────────────────────────────
-
 async fn resolve_short_link(http: &Client, url: &str) -> Option<String> {
     let resp = http.head(url).send().await.ok()?;
     Some(resp.url().to_string())
@@ -1501,51 +1493,6 @@ async fn handle_updatearl(bot: &Bot, msg: &Message, state: &Arc<BotState>, arl: 
     }
     Ok(())
 }
-
-
-async fn handle_voice_note(
-    bot: &Bot,
-    msg: &Message,
-    state: &Arc<BotState>,
-    file_id: String,
-) -> ResponseResult<()> {
-    let user_settings = users::get_or_create(&state.users, msg.chat.id.0);
-    let whisper_on = state.config.whisper_enabled() && user_settings.voice_search;
-    let audd_on = state.config.audd_enabled() && user_settings.song_recognition;
-
-    if !whisper_on && !audd_on {
-        bot.send_message(
-            msg.chat.id,
-            "⚠️ Voice features are not configured or disabled.
-Check /settings or ask your admin to add API keys.",
-        )
-        .await?;
-        return Ok(());
-    }
-
-    // Show options based on what is enabled
-    let mut buttons = vec![];
-    if whisper_on {
-        buttons.push(vec![InlineKeyboardButton::callback(
-            "🗣️ Search what I said",
-            format!("voice_search:{}", file_id),
-        )]);
-    }
-    if audd_on {
-        buttons.push(vec![InlineKeyboardButton::callback(
-            "🎵 Recognize the song",
-            format!("voice_recognize:{}", file_id),
-        )]);
-    }
-    buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-
-    bot.send_message(msg.chat.id, "🎤 What should I do with this voice note?")
-        .reply_markup(InlineKeyboardMarkup::new(buttons))
-        .await?;
-
-    Ok(())
-}
-
 
 fn bitrate_label(bitrate: u8) -> &'static str {
     match bitrate {

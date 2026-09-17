@@ -1,7 +1,7 @@
 [package]
 name = "telegram_bot"
 version = "0.1.0"
-# edition = "2021"
+edition = "2021"
 
 [dependencies]
 teloxide = { version = "0.12", features = ["macros", "rustls"], default-features = false }

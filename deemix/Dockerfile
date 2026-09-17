@@ -21,7 +21,7 @@ WORKDIR /telegram_bot-build
 
 # Manifest бота и исходники (telegram_bot/ копируется как src/ — стандарт Cargo)
 COPY Cargo.toml ./
-COPY telegram_bot/ ./telegram_bot/
+COPY telegram_bot/ ./src/
 
 # Компиляция статического бинарника
 RUN set -eux; \

@@ -54,6 +54,14 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
         set_env "AUDD_API_KEY" "$(jq -r '.audd_api_key // ""' /data/options.json)"
         set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
         set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"
+        set_env "WHITELIST_ENABLED" "$(jq -r '.whitelist_enabled // false' /data/options.json)"
+        set_env "WHITELIST_IDS" "$(jq -r '.whitelist_ids // ""' /data/options.json)"
+        
+        # Предупреждение о пустом белом списке (как в upstream) - позже удалить, когда телеграм бот будет логировать напрямую в аддон
+        if [ "$(jq -r '.whitelist_enabled // false' /data/options.json)" = "true" ] && \
+           [ -z "$(jq -r '.whitelist_ids // ""' /data/options.json)" ]; then
+            echo "[warn] Whitelist is enabled but WHITELIST_IDS is empty. All users will be blocked until configured."
+        fi
 
         # Внутренние настройки для работы в одном контейнере с deemix
         set_env "DEEMIX_URL" "http://localhost:6595"

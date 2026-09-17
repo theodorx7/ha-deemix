@@ -8,7 +8,7 @@ COPY rootfs/ /
 COPY --from=ghcr.io/theodorx7/ha-teleemix:latest /teleemix /usr/local/bin/teleemix
 
 RUN find /etc/cont-init.d/ -type f -exec chmod +x {} \; && \
-    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && \ chmod +x /usr/local/bin/teleemix
+    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && chmod +x /usr/local/bin/teleemix
 
 LABEL \
     io.hass.name="Deemix with Telegram Bot" \

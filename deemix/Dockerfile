@@ -7,9 +7,8 @@ COPY rootfs/ /
 # Docker Overlay: Копируем teleemix binary из готового образа
 COPY --from=ghcr.io/theodorx7/ha-teleemix:latest /teleemix /usr/local/bin/teleemix
 
-# Убеждаемся что binary исполняемый + добавляем S6 сервисы
-RUN chmod +x /custom-cont-init.d/* /usr/local/bin/teleemix && \
-    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; 2>/dev/null || true
+RUN find /etc/cont-init.d/ -type f -exec chmod +x {} \; && \
+    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && \ chmod +x /usr/local/bin/teleemix
 
 LABEL \
     io.hass.name="Deemix with Telegram Bot" \

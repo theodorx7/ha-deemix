@@ -13,7 +13,6 @@ configuration:
           Environment variable value (e.g. /media/downloads/ for
           DEEMIX_MUSIC_DIR, 1000 for PUID).
 
-          DEEMIX_MUSIC_DIR, 1000 for PUID).
   # НОВЫЕ ПЕРЕВОДЫ для Teleemix:
   telegram_enabled:
     name: Enable Telegram Bot

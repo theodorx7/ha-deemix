@@ -1,13 +1,13 @@
 #!/usr/bin/with-contenv bash
 # ==============================================================================
-# Teleemix Telegram Bot Service
+# Telegram Bot Service
 # ==============================================================================
 
 # Check if Telegram bot is enabled
 TELEGRAM_ENABLED="${TELEGRAM_ENABLED:-false}"
 
 if [[ "${TELEGRAM_ENABLED}" == "true" ]]; then
-    echo "[info] Starting Teleemix Telegram Bot..."
+    echo "[info] Starting Telegram Bot..."
 
     # Verify required environment variables
     if [[ -z "${TELEGRAM_TOKEN}" ]]; then
@@ -22,18 +22,18 @@ if [[ "${TELEGRAM_ENABLED}" == "true" ]]; then
         sleep 1
     done
 
-    # Create data directory for teleemix
-    mkdir -p /data/teleemix
+    # Create data directory
+    mkdir -p /data/telegram_bot
 
     # Log configuration (without exposing secrets)
     echo "[info] DEEMIX_URL: ${DEEMIX_URL}"
     echo "[info] DEEMIX_BITRATE: ${DEEMIX_BITRATE}"
     echo "[info] DEEMIX_BITRATE_LOCK: ${DEEMIX_BITRATE_LOCK}"
 
-    # Run Teleemix bot
-    exec /usr/local/bin/teleemix
+    # Run Telegram Bot
+    exec /usr/local/bin/telegram_bot
 else
-    echo "[info] Teleemix Telegram Bot is disabled"
+    echo "[info] Telegram Bot is disabled"
     # Keep service running (S6 expects a long-running process)
     exec sleep infinity
 fi

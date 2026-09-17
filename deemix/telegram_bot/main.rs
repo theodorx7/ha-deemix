@@ -516,104 +516,83 @@ async fn receive_arl(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyD
         Some(t) => t.trim().to_string(),
         None => { bot.send_message(msg.chat.id, "Please send the ARL as text.").await?; return Ok(()); }
     };
-
     if arl.len() < 100 {
         bot.send_message(msg.chat.id, "❌ That ARL looks too short, double check it. Try again:")
             .reply_markup(arl_cancel_keyboard())
             .await?;
         return Ok(());
     }
-
     dialogue.exit().await.ok();
     handle_updatearl(&bot, &msg, &state, &arl).await?;
     Ok(())
 }
 
-// ── Message Handler ───────────────────────────────────────────────────────────
-
-
-async fn receive_voice_transcribe(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
-    dialogue.exit().await.ok();
-
-    let voice = match msg.voice() {
-        Some(v) => v,
-        None => {
-            bot.send_message(msg.chat.id, "⚠️ I expected a voice note. Use /menu to try again.").await?;
-            return Ok(());
-        }
-    };
-
-    let sent = bot.send_message(msg.chat.id, "🎤 Transcribing...").await?;
-
-    // Download audio
-    let file = bot.get_file(&voice.file.id).await
-        .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
-    let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
-    let audio_bytes = match state.http.get(&url).send().await {
-        Ok(r) => r.bytes().await.map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?.to_vec(),
-        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to download audio: {}", e)).await?; return Ok(()); }
-    };
-
+// ── Shared Voice Processors ───────────────────────────────────────────────────
+/// Core transcription logic shared by dialogue receiver and callback handler.
+/// `status_msg_id` is the message being edited for progress updates.
+async fn process_voice_transcribe(
+    bot: &Bot,
+    chat_id: teloxide::types::ChatId,
+    status_msg_id: teloxide::types::MessageId,
+    audio_bytes: Vec<u8>,
+    state: &Arc<BotState>,
+) -> ResponseResult<()> {
     match voice::transcribe(&state.http, audio_bytes, &state.config.openai_api_key, &state.config.whisper_url).await {
-        Ok(text) if text.is_empty() => { bot.edit_message_text(msg.chat.id, sent.id, "😕 Could not transcribe anything. Try speaking more clearly.").await?; }
+        Ok(text) if text.is_empty() => {
+            bot.edit_message_text(chat_id, status_msg_id, "😕 Could not transcribe anything. Try speaking more clearly.").await?;
+        }
         Ok(text) => {
-            bot.edit_message_text(msg.chat.id, sent.id, format!("🔍 I heard: {}\nSearching...", text)).await?;
-            let sent2 = bot.send_message(msg.chat.id, format!("Results for: {}", text)).await?;
+            bot.edit_message_text(chat_id, status_msg_id, format!("🔍 I heard: {}\nSearching...", text)).await?;
+            let sent = bot.send_message(chat_id, format!("Results for: {}", text)).await?;
             match deemix::search(&state, &text, "track").await {
-                Ok(results) if results.is_empty() => { bot.edit_message_text(msg.chat.id, sent2.id, format!("😕 No results for: {}", text)).await?; }
+                Ok(results) if results.is_empty() => {
+                    bot.edit_message_text(chat_id, sent.id, format!("😕 No results for: {}", text)).await?;
+                }
                 Ok(results) => {
                     let (listing, mut buttons) = build_search_results(&results, "🎵");
                     buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-                    bot.edit_message_text(msg.chat.id, sent2.id, format!("Results for {}:\n\n{}\nTap a button to download.", text, listing))
-                        .reply_markup(InlineKeyboardMarkup::new(buttons)).await?;
+                    bot.edit_message_text(chat_id, sent.id, format!("Results for {}:\n\n{}\nTap a button to download.", text, listing))
+                        .reply_markup(InlineKeyboardMarkup::new(buttons))
+                        .await?;
                 }
-                Err(e) => { bot.edit_message_text(msg.chat.id, sent2.id, format!("❌ Search failed: {}", e)).await?; }
+                Err(e) => {
+                    bot.edit_message_text(chat_id, sent.id, format!("❌ Search failed: {}", e)).await?;
+                }
             }
         }
-        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Transcription failed: {}", e)).await?; }
+        Err(e) => {
+            bot.edit_message_text(chat_id, status_msg_id, format!("❌ Transcription failed: {}", e)).await?;
+        }
     }
     Ok(())
 }
 
-async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
-    dialogue.exit().await.ok();
-
-    let voice = match msg.voice() {
-        Some(v) => v,
-        None => {
-            bot.send_message(msg.chat.id, "⚠️ I expected a voice note. Use /menu to try again.").await?;
-            return Ok(());
-        }
-    };
-
-    let sent = bot.send_message(msg.chat.id, "🎵 Recognizing song...").await?;
-
-    // Download audio
-    let file = bot.get_file(&voice.file.id).await
-        .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
-    let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
-    let audio_bytes = match state.http.get(&url).send().await {
-        Ok(r) => r.bytes().await.map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?.to_vec(),
-        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to download audio: {}", e)).await?; return Ok(()); }
-    };
-
+/// Core song recognition logic shared by dialogue receiver and callback handler.
+/// Implements the full cascade: AudD Deezer URL → Odesli → iTunes → Spotify → text search.
+async fn process_voice_recognize(
+    bot: &Bot,
+    chat_id: teloxide::types::ChatId,
+    status_msg_id: teloxide::types::MessageId,
+    audio_bytes: Vec<u8>,
+    state: &Arc<BotState>,
+) -> ResponseResult<()> {
     match voice::recognize(&state.http, audio_bytes, &state.config.audd_api_key).await {
         Ok(rec) => {
-            let query = format!("{} {}", rec.title, rec.artist).replace('&', " ").split_whitespace().collect::<Vec<_>>().join(" ");
-            bot.edit_message_text(msg.chat.id, sent.id, format!("🎵 Found: {} — {}\nQueuing...", rec.title, rec.artist)).await?;
-            // Use Deezer URL directly from AudD if available (avoids transliteration issues)
+            let query = format!("{} {}", rec.title, rec.artist).replace('&', " ").split_whitespace().collect::<Vec<&str>>().join(" ");
+            bot.edit_message_text(chat_id, status_msg_id, format!("🎵 Found: {} — {}\nQueuing...", rec.title, rec.artist)).await?;
+            // Step 1: Use Deezer URL directly from AudD if available
             if let Some(ref deezer_url) = rec.deezer_url {
                 log::info!("[recognize] Step 1: using AudD Deezer URL: {}", deezer_url);
                 match deemix::add_to_queue(&state, deezer_url).await {
-                    Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
+                    Ok(_) => { bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
                     Err(e) => {
                         log::info!("[recognize] Step 1 FAILED: add_to_queue error: {}", e);
-                        bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?;
+                        bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?;
                     }
                 }
             } else {
+                // Step 2: Try Odesli (song.link) for a direct Deezer URL
                 log::info!("[recognize] Step 1: no AudD Deezer URL, trying Odesli");
-                // Try Odesli (song.link) for a direct Deezer URL
                 let odesli_deezer = if let Some(ref sl) = rec.song_link {
                     log::info!("[recognize] Step 2: song_link present: {}", sl);
                     voice::lookup_deezer_via_odesli(&state.http, sl).await
@@ -621,97 +600,153 @@ async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<BotState>, d
                     log::info!("[recognize] Step 2: no song_link, skipping Odesli");
                     None
                 };
-
                 if let Some(ref deezer_url) = odesli_deezer {
                     log::info!("[recognize] Step 2: using Odesli Deezer URL: {}", deezer_url);
                     match deemix::add_to_queue(&state, deezer_url).await {
-                        Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
+                        Ok(_) => { bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
                         Err(e) => {
                             log::info!("[recognize] Step 2 FAILED: add_to_queue error: {}", e);
-                            bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?;
+                            bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?;
                         }
                     }
                 } else {
+                    // Step 2b: Try iTunes → Odesli
                     log::info!("[recognize] Step 2: song.link gave no Deezer URL, trying iTunes→Odesli");
                     let itunes_deezer = voice::lookup_deezer_via_itunes(&state.http, &rec.title, &rec.artist).await;
                     if let Some(ref deezer_url) = itunes_deezer {
                         log::info!("[recognize] Step 2b: using iTunes→Odesli Deezer URL: {}", deezer_url);
                         match deemix::add_to_queue(&state, deezer_url).await {
-                            Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
-                            Err(e) => { log::info!("[recognize] Step 2b FAILED: {}", e); bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?; }
+                            Ok(_) => { bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
+                            Err(e) => {
+                                log::info!("[recognize] Step 2b FAILED: add_to_queue error: {}", e);
+                                bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?;
+                            }
                         }
                     } else {
-                    // Step 2c: try Odesli API directly with Spotify URL
-                    let spotify_deezer = if let Some(ref sp_url) = rec.spotify_url {
-                        log::info!("[recognize] Step 2c: trying Odesli via Spotify URL: {}", sp_url);
-                        voice::lookup_deezer_via_spotify(&state.http, sp_url).await
-                    } else {
-                        log::info!("[recognize] Step 2c: no Spotify URL, skipping");
-                        None
-                    };
-                    if let Some(ref deezer_url) = spotify_deezer {
-                        log::info!("[recognize] Step 2c: using Spotify→Odesli Deezer URL: {}", deezer_url);
-                        match deemix::add_to_queue(&state, deezer_url).await {
-                            Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
-                            Err(e) => { log::info!("[recognize] Step 2c FAILED: {}", e); bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?; }
-                        }
-                    } else {
-                    // Try Spotify metadata for proper Unicode title; fall back to arabizi
-                    let search_query = if let Some(ref sp_url) = rec.spotify_url {
-                        log::info!("[recognize] Step 3: resolving Spotify URL: {}", sp_url);
-                        match spotify::resolve(sp_url).await {
-                            Some(meta) => { log::info!("[recognize] Step 3: Spotify query: {:?}", meta.query); meta.query }
-                            None => { log::info!("[recognize] Step 3: Spotify resolve failed, falling back to AudD text: {:?}", query); query.clone() }
-                        }
-                    } else {
-                        log::info!("[recognize] Step 3: no Spotify URL, using AudD text: {:?}", query);
-                        query.clone()
-                    };
-                    log::info!("[recognize] Step 3: Deezer text search query: {:?}", search_query);
-                    let deezer_search_url: String = {
-                        let encoded: String = search_query.bytes().map(|b| match b {
-                            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => char::from(b).to_string(),
-                            b' ' => "%20".to_string(),
-                            _ => format!("%{:02X}", b),
-                        }).collect();
-                        format!("https://www.deezer.com/search/{}", encoded)
-                    };
-                    let sent2 = bot.send_message(msg.chat.id, "Searching on Deezer...").await?;
-                    let results = match deemix::search(&state, &search_query, "track").await {
-                        Err(e) => { bot.edit_message_text(msg.chat.id, sent2.id, format!("❌ Search failed: {}", e)).await?; return Ok(()); }
-                        Ok(r) if r.is_empty() => {
-                            log::info!("[recognize] Step 3: full query 0 results, retrying title-only: {:?}", rec.title);
-                            deemix::search(&state, &rec.title, "track").await.unwrap_or_default()
-                        }
-                        Ok(r) => r,
-                    };
-                    if results.is_empty() {
-                        log::info!("[recognize] Step 3: title-only search also 0 results");
-                        if let Ok(url) = reqwest::Url::parse(&deezer_search_url) {
-                            bot.edit_message_text(msg.chat.id, sent2.id, format!("😕 No results for: {} — {}\n\nSearch on Deezer and paste the link back here.", rec.title, rec.artist))
-                                .reply_markup(InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::url("🔍 Search on Deezer", url)]]))
-                                .await?;
+                        // Step 2c: Try Odesli API directly with Spotify URL
+                        let spotify_deezer = if let Some(ref sp_url) = rec.spotify_url {
+                            log::info!("[recognize] Step 2c: trying Odesli via Spotify URL: {}", sp_url);
+                            voice::lookup_deezer_via_spotify(&state.http, sp_url).await
                         } else {
-                            bot.edit_message_text(msg.chat.id, sent2.id, format!("😕 No results for: {} — {}", rec.title, rec.artist)).await?;
+                            log::info!("[recognize] Step 2c: no Spotify URL, skipping");
+                            None
+                        };
+                        if let Some(ref deezer_url) = spotify_deezer {
+                            log::info!("[recognize] Step 2c: using Spotify→Odesli Deezer URL: {}", deezer_url);
+                            match deemix::add_to_queue(&state, deezer_url).await {
+                                Ok(_) => { bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
+                                Err(e) => {
+                                    log::info!("[recognize] Step 2c FAILED: {}", e);
+                                    bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?;
+                                }
+                            }
+                        } else {
+                            // Step 3: Try Spotify metadata for proper Unicode title; fall back to arabizi
+                            let search_query = if let Some(ref sp_url) = rec.spotify_url {
+                                log::info!("[recognize] Step 3: resolving Spotify URL: {}", sp_url);
+                                match spotify::resolve(sp_url).await {
+                                    Some(meta) => { log::info!("[recognize] Step 3: Spotify query: {:?}", meta.query); meta.query }
+                                    None => { log::info!("[recognize] Step 3: Spotify resolve failed, falling back to AudD text: {:?}", query); query.clone() }
+                                }
+                            } else {
+                                log::info!("[recognize] Step 3: no Spotify URL, using AudD text: {:?}", query);
+                                query.clone()
+                            };
+                            log::info!("[recognize] Step 3: Deezer text search query: {:?}", search_query);
+                            let deezer_search_url: String = {
+                                let encoded: String = search_query.bytes().map(|b| match b {
+                                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => char::from(b).to_string(),
+                                    b' ' => "%20".to_string(),
+                                    _ => format!("%{:02X}", b),
+                                }).collect();
+                                format!("https://www.deezer.com/search/{}", encoded)
+                            };
+                            let sent = bot.send_message(chat_id, "Searching on Deezer...").await?;
+                            let results = match deemix::search(&state, &search_query, "track").await {
+                                Err(e) => {
+                                    log::info!("[recognize] Step 3: Deezer search error: {}", e);
+                                    bot.edit_message_text(chat_id, sent.id, format!("❌ Search failed: {}", e)).await?;
+                                    return Ok(());
+                                }
+                                Ok(r) if r.is_empty() => {
+                                    log::info!("[recognize] Step 3: full query 0 results, retrying title-only: {:?}", rec.title);
+                                    deemix::search(&state, &rec.title, "track").await.unwrap_or_default()
+                                }
+                                Ok(r) => r,
+                            };
+                            if results.is_empty() {
+                                log::info!("[recognize] Step 3: title-only search also 0 results");
+                                if let Ok(url) = reqwest::Url::parse(&deezer_search_url) {
+                                    bot.edit_message_text(chat_id, sent.id, format!("😕 No results for: {} — {}\n\nSearch on Deezer and paste the link back here.", rec.title, rec.artist))
+                                        .reply_markup(InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::url("🔍 Search on Deezer", url)]]))
+                                        .await?;
+                                } else {
+                                    bot.edit_message_text(chat_id, sent.id, format!("😕 No results for: {} — {}", rec.title, rec.artist)).await?;
+                                }
+                            } else {
+                                log::info!("[recognize] Step 3: got {} Deezer results", results.len());
+                                let (listing, mut buttons) = build_search_results(&results, "🎵");
+                                if let Ok(url) = reqwest::Url::parse(&deezer_search_url) {
+                                    buttons.push(vec![InlineKeyboardButton::url("🔍 None of these — search on Deezer", url)]);
+                                }
+                                buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
+                                bot.edit_message_text(chat_id, sent.id, format!("Results for {} — {}:\n\n{}\nIf none match, search on Deezer and paste the link back here.", rec.title, rec.artist, listing))
+                                    .reply_markup(InlineKeyboardMarkup::new(buttons))
+                                    .await?;
+                            }
                         }
-                    } else {
-                        log::info!("[recognize] Step 3: got {} Deezer results", results.len());
-                        let (listing, mut buttons) = build_search_results(&results, "🎵");
-                        if let Ok(url) = reqwest::Url::parse(&deezer_search_url) {
-                            buttons.push(vec![InlineKeyboardButton::url("🔍 None of these — search on Deezer", url)]);
-                        }
-                        buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-                        bot.edit_message_text(msg.chat.id, sent2.id, format!("Results for {} — {}:\n\n{}\nIf none match, search on Deezer and paste the link back here.", rec.title, rec.artist, listing))
-                            .reply_markup(InlineKeyboardMarkup::new(buttons)).await?;
                     }
-                    } // closes 2c else
-                    } // closes iTunes else
                 }
             }
         }
-        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Recognition failed: {}", e)).await?; }
+        Err(e) => {
+            bot.edit_message_text(chat_id, status_msg_id, format!("❌ Recognition failed: {}", e)).await?;
+        }
     }
     Ok(())
+}
+
+// ── Message Handler ───────────────────────────────────────────────────────────
+async fn receive_voice_transcribe(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
+    dialogue.exit().await.ok();
+    let voice = match msg.voice() {
+        Some(v) => v,
+        None => {
+            bot.send_message(msg.chat.id, "⚠️ I expected a voice note. Use /menu to try again.").await?;
+            return Ok(());
+        }
+    };
+    let sent = bot.send_message(msg.chat.id, "🎤 Transcribing...").await?;
+    // Download audio from Telegram
+    let file = bot.get_file(&voice.file.id).await
+        .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
+    let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
+    let audio_bytes = match state.http.get(&url).send().await {
+        Ok(r) => r.bytes().await.map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?.to_vec(),
+        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to download audio: {}", e)).await?; return Ok(()); }
+    };
+    process_voice_transcribe(&bot, msg.chat.id, sent.id, audio_bytes, &state).await
+}
+
+async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
+    dialogue.exit().await.ok();
+    let voice = match msg.voice() {
+        Some(v) => v,
+        None => {
+            bot.send_message(msg.chat.id, "⚠️ I expected a voice note. Use /menu to try again.").await?;
+            return Ok(());
+        }
+    };
+    let sent = bot.send_message(msg.chat.id, "🎵 Recognizing song...").await?;
+    // Download audio from Telegram
+    let file = bot.get_file(&voice.file.id).await
+        .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
+    let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
+    let audio_bytes = match state.http.get(&url).send().await {
+        Ok(r) => r.bytes().await.map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?.to_vec(),
+        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to download audio: {}", e)).await?; return Ok(()); }
+    };
+    process_voice_recognize(&bot, msg.chat.id, sent.id, audio_bytes, &state).await
 }
 
 async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
@@ -1084,152 +1119,15 @@ async fn handle_callback(
 
             match action {
                 "transcribe" => {
-                    bot.edit_message_text(msg.chat.id, msg.id, "🎤 Transcribing...").await?;
-                    match voice::transcribe(&state.http, audio_bytes, &state.config.openai_api_key, &state.config.whisper_url).await {
-                        Ok(text) if text.is_empty() => {
-                            bot.edit_message_text(msg.chat.id, msg.id, "😕 Could not transcribe anything. Try speaking more clearly.").await?;
-                        }
-                        Ok(text) => {
-                            bot.edit_message_text(msg.chat.id, msg.id, format!("🔍 I heard: {}\nSearching...", text)).await?;
-                            let sent = bot.send_message(msg.chat.id, format!("Results for: {}", text)).await?;
-                            match deemix::search(&state, &text, "track").await {
-                                Ok(results) if results.is_empty() => {
-                                    bot.edit_message_text(msg.chat.id, sent.id, format!("😕 No results for: {}", text)).await?;
-                                }
-                                Ok(results) => {
-                                    let (listing, mut buttons) = build_search_results(&results, "🎵");
-                                    buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-                                    bot.edit_message_text(msg.chat.id, sent.id, format!("Results for '{}':\n\n{}\nTap a button to download.", text, listing))
-                                        .reply_markup(InlineKeyboardMarkup::new(buttons)).await?;
-                                }
-                                Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Search failed: {}", e)).await?; }
-                            }
-                        }
-                        Err(e) => { bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Transcription failed: {}", e)).await?; }
-                    }
+                    process_voice_transcribe(&bot, msg.chat.id, msg.id, audio_bytes, &state).await?;
                 }
                 "recognize" => {
-                    bot.edit_message_text(msg.chat.id, msg.id, "🎵 Recognizing song...").await?;
-                    match voice::recognize(&state.http, audio_bytes, &state.config.audd_api_key).await {
-                        Ok(rec) => {
-                            let query = format!("{} {}", rec.title, rec.artist).replace('&', " ").split_whitespace().collect::<Vec<_>>().join(" ");
-                            bot.edit_message_text(msg.chat.id, msg.id, format!("🎵 Found: {} — {}\nQueuing...", rec.title, rec.artist)).await?;
-                            // Use Deezer URL directly from AudD if available (avoids transliteration issues)
-                            if let Some(ref deezer_url) = rec.deezer_url {
-                                log::info!("[recognize/cb] Step 1: using AudD Deezer URL: {}", deezer_url);
-                                match deemix::add_to_queue(&state, deezer_url).await {
-                                    Ok(_) => { bot.edit_message_text(msg.chat.id, msg.id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
-                                    Err(e) => {
-                                        log::info!("[recognize/cb] Step 1 FAILED: add_to_queue error: {}", e);
-                                        bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Failed to queue: {}", e)).await?;
-                                    }
-                                }
-                            } else {
-                                log::info!("[recognize/cb] Step 1: no AudD Deezer URL, trying Odesli");
-                                // Try Odesli (song.link) for a direct Deezer URL
-                                let odesli_deezer = if let Some(ref sl) = rec.song_link {
-                                    log::info!("[recognize/cb] Step 2: song_link present: {}", sl);
-                                    voice::lookup_deezer_via_odesli(&state.http, sl).await
-                                } else {
-                                    log::info!("[recognize/cb] Step 2: no song_link, skipping Odesli");
-                                    None
-                                };
-
-                                if let Some(ref deezer_url) = odesli_deezer {
-                                    log::info!("[recognize/cb] Step 2: using Odesli Deezer URL: {}", deezer_url);
-                                    match deemix::add_to_queue(&state, deezer_url).await {
-                                        Ok(_) => { bot.edit_message_text(msg.chat.id, msg.id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
-                                        Err(e) => {
-                                            log::info!("[recognize/cb] Step 2 FAILED: add_to_queue error: {}", e);
-                                            bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Failed to queue: {}", e)).await?;
-                                        }
-                                    }
-                                } else {
-                                    log::info!("[recognize/cb] Step 2: song.link gave no Deezer URL, trying iTunes→Odesli");
-                                    let itunes_deezer = voice::lookup_deezer_via_itunes(&state.http, &rec.title, &rec.artist).await;
-                                    if let Some(ref deezer_url) = itunes_deezer {
-                                        log::info!("[recognize/cb] Step 2b: using iTunes→Odesli Deezer URL: {}", deezer_url);
-                                        match deemix::add_to_queue(&state, deezer_url).await {
-                                            Ok(_) => { bot.edit_message_text(msg.chat.id, msg.id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
-                                            Err(e) => { log::info!("[recognize/cb] Step 2b FAILED: {}", e); bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Failed to queue: {}", e)).await?; }
-                                        }
-                                    } else {
-                                    // Step 2c: try Odesli API directly with Spotify URL
-                                    let spotify_deezer = if let Some(ref sp_url) = rec.spotify_url {
-                                        log::info!("[recognize/cb] Step 2c: trying Odesli via Spotify URL: {}", sp_url);
-                                        voice::lookup_deezer_via_spotify(&state.http, sp_url).await
-                                    } else {
-                                        log::info!("[recognize/cb] Step 2c: no Spotify URL, skipping");
-                                        None
-                                    };
-                                    if let Some(ref deezer_url) = spotify_deezer {
-                                        log::info!("[recognize/cb] Step 2c: using Spotify→Odesli Deezer URL: {}", deezer_url);
-                                        match deemix::add_to_queue(&state, deezer_url).await {
-                                            Ok(_) => { bot.edit_message_text(msg.chat.id, msg.id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
-                                            Err(e) => { log::info!("[recognize/cb] Step 2c FAILED: {}", e); bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Failed to queue: {}", e)).await?; }
-                                        }
-                                    } else {
-                                    // Try Spotify metadata for proper Unicode title; fall back to arabizi
-                                    let search_query = if let Some(ref sp_url) = rec.spotify_url {
-                                        log::info!("[recognize/cb] Step 3: resolving Spotify URL: {}", sp_url);
-                                        match spotify::resolve(sp_url).await {
-                                            Some(meta) => { log::info!("[recognize/cb] Step 3: Spotify query: {:?}", meta.query); meta.query }
-                                            None => { log::info!("[recognize/cb] Step 3: Spotify resolve failed, falling back to AudD text: {:?}", query); query.clone() }
-                                        }
-                                    } else {
-                                        log::info!("[recognize/cb] Step 3: no Spotify URL, using AudD text: {:?}", query);
-                                        query.clone()
-                                    };
-                                    log::info!("[recognize/cb] Step 3: Deezer text search query: {:?}", search_query);
-                                    let deezer_search_url: String = {
-                                        let encoded: String = search_query.bytes().map(|b| match b {
-                                            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => char::from(b).to_string(),
-                                            b' ' => "%20".to_string(),
-                                            _ => format!("%{:02X}", b),
-                                        }).collect();
-                                        format!("https://www.deezer.com/search/{}", encoded)
-                                    };
-                                    let sent = bot.send_message(msg.chat.id, "Searching on Deezer...").await?;
-                                    let results = match deemix::search(&state, &search_query, "track").await {
-                                        Err(e) => { log::info!("[recognize/cb] Step 3: Deezer search error: {}", e); bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Search failed: {}", e)).await?; return Ok(()); }
-                                        Ok(r) if r.is_empty() => {
-                                            log::info!("[recognize/cb] Step 3: full query 0 results, retrying title-only: {:?}", rec.title);
-                                            deemix::search(&state, &rec.title, "track").await.unwrap_or_default()
-                                        }
-                                        Ok(r) => r,
-                                    };
-                                    if results.is_empty() {
-                                        log::info!("[recognize/cb] Step 3: title-only search also 0 results");
-                                        if let Ok(url) = reqwest::Url::parse(&deezer_search_url) {
-                                            bot.edit_message_text(msg.chat.id, sent.id, format!("😕 No results for: {} — {}\n\nSearch on Deezer and paste the link back here.", rec.title, rec.artist))
-                                                .reply_markup(InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::url("🔍 Search on Deezer", url)]]))
-                                                .await?;
-                                        } else {
-                                            bot.edit_message_text(msg.chat.id, sent.id, format!("😕 No results for: {} — {}", rec.title, rec.artist)).await?;
-                                        }
-                                    } else {
-                                        log::info!("[recognize/cb] Step 3: got {} Deezer results", results.len());
-                                        let (listing, mut buttons) = build_search_results(&results, "🎵");
-                                        if let Ok(url) = reqwest::Url::parse(&deezer_search_url) {
-                                            buttons.push(vec![InlineKeyboardButton::url("🔍 None of these — search on Deezer", url)]);
-                                        }
-                                        buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-                                        bot.edit_message_text(msg.chat.id, sent.id, format!("Results for {} — {}:\n\n{}\nIf none match, search on Deezer and paste the link back here.", rec.title, rec.artist, listing))
-                                            .reply_markup(InlineKeyboardMarkup::new(buttons)).await?;
-                                    }
-                                    } // closes 2c else
-                                    } // closes iTunes else
-                                }
-                            }
-                        }
-                        Err(e) => { bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Recognition failed: {}", e)).await?; }
-                    }
+                    process_voice_recognize(&bot, msg.chat.id, msg.id, audio_bytes, &state).await?;
                 }
                 _ => {}
             }
         }
     }
-
     Ok(())
 }
 

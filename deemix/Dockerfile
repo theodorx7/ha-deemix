@@ -42,8 +42,13 @@ COPY rootfs/ /
 # Копируем скомпилированный Telegram Bot binary из builder-этапа
 COPY --from=telegram_bot-builder /telegram_bot /usr/local/bin/telegram_bot
 
-RUN find /etc/cont-init.d/ -type f -exec chmod +x {} \; && \
-    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && chmod +x /usr/local/bin/telegram_bot
+#RUN find /etc/cont-init.d/ -type f -exec chmod +x {} \; && \
+#    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && chmod +x /usr/local/bin/telegram_bot
+
+RUN ls -la /usr/local/bin/telegram_bot
+RUN find /etc/cont-init.d/ -type f -exec chmod +x {} \; || echo "cont-init.d: no files or dir missing"
+RUN find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; || echo "services.d: no files or dir missing"
+RUN chmod +x /usr/local/bin/telegram_bot
 
 LABEL \
     io.hass.name="Deemix with Telegram Bot" \

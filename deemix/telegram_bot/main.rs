@@ -24,7 +24,6 @@ mod youtube;
 use users::{UsersDb, UserSettings};
 
 // ── Dialogue State ────────────────────────────────────────────────────────────
-
 #[derive(Clone, Default, Debug)]
 pub enum State {
     #[default]
@@ -41,7 +40,6 @@ pub enum State {
 type MyDialogue = Dialogue<State, InMemStorage<State>>;
 
 // ── Config ────────────────────────────────────────────────────────────────────
-
 #[derive(Clone)]
 pub struct Config {
     pub deemix_url: String,
@@ -100,7 +98,6 @@ impl Config {
 }
 
 // ── Bot State ─────────────────────────────────────────────────────────────────
-
 #[derive(Clone)]
 pub struct BotState {
     pub config: Arc<Config>,
@@ -131,7 +128,6 @@ impl BotState {
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
-
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "Teleemix commands:")]
 enum Command {
@@ -160,7 +156,6 @@ enum Command {
 }
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
-
 lazy_static::lazy_static! {
     static ref DEEZER_URL_RE: Regex = Regex::new(
         r"https?://(?:www\.)?deezer\.com/(?:[a-z]+/)?(track|album|playlist|artist)/(\d+)"
@@ -186,7 +181,6 @@ lazy_static::lazy_static! {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok();
@@ -267,7 +261,6 @@ async fn main() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
 fn user_id_from_msg(msg: &Message) -> i64 {
     msg.from().map(|u| u.id.0 as i64).unwrap_or(0)
 }
@@ -361,7 +354,6 @@ async fn handle_unauthorized_callback(
 }
 
 // ── Command Handler ───────────────────────────────────────────────────────────
-
 async fn handle_command(
     bot: Bot,
     msg: Message,
@@ -486,7 +478,6 @@ I connect to your personal deemix server and queue music downloads for you. Just
 }
 
 // ── Dialogue Receivers ────────────────────────────────────────────────────────
-
 async fn receive_search(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
     dialogue.exit().await.ok();
     if let Some(query) = msg.text() { do_search(&bot, &msg, &state, query.trim(), "track").await?; }

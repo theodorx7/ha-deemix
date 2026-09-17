@@ -43,7 +43,7 @@ COPY rootfs/ /
 COPY --from=telegram_bot-builder /telegram_bot /usr/local/bin/telegram_bot
 
 RUN find /etc/cont-init.d/ -type f -exec chmod +x {} \; && \
-    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && chmod +x /usr/local/bin/teleemix
+    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && chmod +x /usr/local/bin/telegram_bot
 
 LABEL \
     io.hass.name="Deemix with Telegram Bot" \

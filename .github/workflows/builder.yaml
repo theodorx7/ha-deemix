@@ -72,8 +72,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
-      id-token: write
-#      packages: write
+#      id-token: write   # вернуть при включении cosign
+      packages: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.init.outputs.build_matrix) }}
@@ -106,8 +106,8 @@ jobs:
     needs: [init, build]
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
-#      packages: write
+#      id-token: write   # вернуть при включении cosign
+      packages: write
     steps:
       - name: Publish multi-arch manifest
         uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.06.0

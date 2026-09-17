@@ -44,35 +44,17 @@ configuration:
       Prevent users from changing the download quality
       via the Telegram bot /settings command.
   whitelist_enabled:
-    name: "Enable User Whitelist"
+    name: "Access Control"
     description: >-
       Restrict bot access to only whitelisted user IDs.
       Leave false to allow all users (default).
   whitelist_ids:
-    name: "Whitelisted User IDs"
+    name: "Allowed User Telegram IDs"
     description: >-
       Comma-separated list of Telegram user IDs allowed to use the bot.
       Get your ID via @userinfobot on Telegram.
       Spaces around IDs are trimmed automatically. Invalid IDs are ignored.
       Example: 123456789,987654321
-  audd_api_key:
-    name: AudD API Key
-    description: >-
-      Optional: API key for song recognition from voice recordings.
-      Get a free key at https://audd.io/ (100 recognitions/month).
-      Leave empty to disable song recognition.
-  openai_api_key:
-    name: OpenAI API Key
-    description: >-
-      Optional: OpenAI API key for voice note transcription.
-      Required for voice search feature.
-      Leave empty to disable voice search.
-  whisper_url:
-    name: Whisper Server URL
-    description: >-
-      Optional: URL to your self-hosted Whisper server.
-      Alternative to OpenAI API for voice transcription.
-      Leave empty to use OpenAI or disable voice search.
 
 network:
   6595/tcp: "Deemix WebIU"

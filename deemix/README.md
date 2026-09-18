@@ -7,4 +7,4 @@
 # Home Assistant Add-on: Deemix + Telegram Bot
 
 > ⚠️ **WIP: IN DEVELOPMENT**
-> The code is not working yet. Subscribe to updates (**Watch -> Releases**) and wait for the first release.
+> Subscribe to updates (**Watch -> Releases**) and wait for the first release.

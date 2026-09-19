@@ -1420,7 +1420,7 @@ async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), Str
     
     let client = reqwest::Client::new();
     
-    // 1. Получаем slug аддона через /addons/self/info
+    // 1. Get current application options via /addons/self/info
     let info_url = "http://supervisor/addons/self/info";
     let info_response = client
         .get(info_url)
@@ -1436,13 +1436,15 @@ async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), Str
     let info: serde_json::Value = info_response.json().await
         .map_err(|e| e.to_string())?;
     
-    let slug = info["data"]["slug"].as_str()
-        .ok_or_else(|| "Failed to get addon slug".to_string())?;
+    let mut options = info["data"]["options"].as_object()
+        .ok_or_else(|| "Failed to get addon options".to_string())?
+        .clone();
+    options.insert(key.to_string(), value);
     
-    // 2. Обновляем опции через правильный endpoint
-    let url = format!("http://supervisor/addons/{}/options", slug);
+    // 2. Updating options via the correct endpoint.
+    let url = "http://supervisor/addons/self/options".to_string();
     
-    let payload = serde_json::json!({ key: value });
+    let payload = serde_json::json!({ "options": options });
     
     let response = client
         .post(&url)

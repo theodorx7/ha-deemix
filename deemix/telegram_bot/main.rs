@@ -978,7 +978,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
                         let _ = std::fs::write(config_json_path, updated_json);
                         std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
                         // Synchronization with HA via the Supervisor API
-                        let _ = update_ha_option("deemix_bitrate", &new_bitrate.to_string()).await;
+                        let _ = update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await;
                     }
                 }
             }
@@ -1383,7 +1383,7 @@ async fn handle_updatearl(bot: &Bot, msg: &Message, state: &Arc<BotState>, arl: 
             std::env::set_var("DEEMIX_ARL", arl);
             
             // Synchronization with HA via the Supervisor API
-            match update_ha_option("deemix_arl", arl).await {
+            match update_ha_option("deemix_arl", serde_json::json!(arl)).await {
                 Ok(_) => {
                     log::info!("[ha-sync] ARL synced to HA options");
                 }
@@ -1413,7 +1413,7 @@ fn next_bitrate(current: u8) -> u8 {
 }
 
 /// Update an add-on option in HA via the Supervisor API
-async fn update_ha_option(key: &str, value: &str) -> Result<(), String> {
+async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), String> {
     let token = match env::var("SUPERVISOR_TOKEN") {
         Ok(t) => t,
         Err(_) => return Err("SUPERVISOR_TOKEN not set".to_string()),

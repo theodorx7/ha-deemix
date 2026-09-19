@@ -18,7 +18,7 @@ if [[ "${TELEGRAM_ENABLED}" == "true" ]]; then
 
     # Wait for Deemix to listen on port 6595
     for _ in $(seq 1 60); do
-        (echo > /dev/tcp/127.0.0.1/6595) 2>/dev/null && break
+        (echo > /dev/tcp/127.0.0.1/${DEEMIX_SERVER_PORT}) 2>/dev/null && break
         sleep 1
     done
 

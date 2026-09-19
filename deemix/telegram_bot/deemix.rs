@@ -44,10 +44,24 @@ pub async fn login_arl(state: &Arc<BotState>, arl: &str) -> Result<String, Strin
 /// cookie session silently expires and POSTs start failing with NotLoggedIn.
 /// Re-login with the current ARL so the caller can retry.
 async fn relogin(state: &Arc<BotState>) -> Result<(), String> {
-    let arl = state.current_arl.lock().await.clone();
+    let arl = {
+        let file_arl = std::fs::read_to_string("/config/login.json")
+            .ok()
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .and_then(|v| v["arl"].as_str().map(|s| s.to_string()));
+        
+        match file_arl {
+            Some(a) if !a.is_empty() => a,
+            _ => state.current_arl.lock().await.clone(),
+        }
+    };
+    
     if arl.is_empty() {
         return Err("Session expired and no ARL is configured".to_string());
     }
+    
+    *state.current_arl.lock().await = arl.clone();
+    
     log::warn!("deemix session expired — re-logging in");
     login_arl(state, &arl).await.map(|_| ())
 }

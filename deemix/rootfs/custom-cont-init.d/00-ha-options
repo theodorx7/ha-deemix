@@ -104,6 +104,18 @@ if [ ! -f "${CONFIG_JSON}" ]; then
     fi
 fi
 
+# Синхронизируем maxBitrate из HA options при КАЖДОМ запуске
+BITRATE_FROM_OPTIONS=$(jq -r '.deemix_bitrate // 9' /data/options.json | tr -d '"')
+if [ -n "${BITRATE_FROM_OPTIONS}" ] && [[ "${BITRATE_FROM_OPTIONS}" =~ ^[0-9]+$ ]]; then
+    if [ -f "${CONFIG_JSON}" ]; then
+        CURRENT_BITRATE=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null)
+        if [ "${CURRENT_BITRATE}" != "${BITRATE_FROM_OPTIONS}" ]; then
+            echo "[info] Syncing maxBitrate to ${BITRATE_FROM_OPTIONS} (from HA options)"
+            jq --arg bitrate "${BITRATE_FROM_OPTIONS}" '.maxBitrate = ($bitrate | tonumber)' "${CONFIG_JSON}" > "${CONFIG_JSON}.tmp" && mv "${CONFIG_JSON}.tmp" "${CONFIG_JSON}"
+        fi
+    fi
+fi
+
 # Установка ENV DEEMIX_BITRATE из config.json (или из options.json)
 BITRATE_FOR_ENV=""
 if [ -f "${CONFIG_JSON}" ]; then

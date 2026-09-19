@@ -1411,7 +1411,6 @@ fn bitrate_label(bitrate: u8) -> &'static str {
 fn next_bitrate(current: u8) -> u8 {
     match current { 9 => 3, 3 => 1, _ => 9 }
 }
-
 /// Update an add-on option in HA via the Supervisor API
 async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), String> {
     let token = match env::var("SUPERVISOR_TOKEN") {
@@ -1419,13 +1418,34 @@ async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), Str
         Err(_) => return Err("SUPERVISOR_TOKEN not set".to_string()),
     };
     
-    let url = "http://supervisor/addons/self/options";
     let client = reqwest::Client::new();
+    
+    // 1. Получаем slug аддона через /addons/self/info
+    let info_url = "http://supervisor/addons/self/info";
+    let info_response = client
+        .get(info_url)
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    if !info_response.status().is_success() {
+        return Err(format!("Failed to get addon info: {}", info_response.status()));
+    }
+    
+    let info: serde_json::Value = info_response.json().await
+        .map_err(|e| e.to_string())?;
+    
+    let slug = info["data"]["slug"].as_str()
+        .ok_or_else(|| "Failed to get addon slug".to_string())?;
+    
+    // 2. Обновляем опции через правильный endpoint
+    let url = format!("http://supervisor/addons/{}/options", slug);
     
     let payload = serde_json::json!({ key: value });
     
     let response = client
-        .post(url)
+        .post(&url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
         .json(&payload)
@@ -1438,7 +1458,8 @@ async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), Str
         Ok(())
     } else {
         let status = response.status();
-        Err(format!("Supervisor API error: {}", status))
+        let body = response.text().await.unwrap_or_default();
+        Err(format!("Supervisor API error: {} - {}", status, body))
     }
 }
 

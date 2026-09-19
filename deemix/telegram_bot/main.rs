@@ -44,9 +44,6 @@ type MyDialogue = Dialogue<State, InMemStorage<State>>;
 pub struct Config {
     pub deemix_url: String,
     pub deemix_arl: String,
-    pub compose_file: String,
-    pub service_name: String,
-    pub env_file: String,
     pub users_file: String,
     pub audd_api_key: String,
     pub openai_api_key: String,
@@ -62,19 +59,32 @@ impl Config {
         Self {
             deemix_url: env::var("DEEMIX_URL")
                 .unwrap_or_else(|_| "http://localhost:6595".to_string()),
-            deemix_arl: env::var("DEEMIX_ARL").unwrap_or_default(),
-            compose_file: env::var("COMPOSE_FILE")
-                .unwrap_or_else(|_| "/compose/docker-compose.yml".to_string()),
-            service_name: env::var("SERVICE_NAME")
-                .unwrap_or_else(|_| "teleemix".to_string()),
-            env_file: env::var("ENV_FILE")
-                .unwrap_or_else(|_| "/app/.env".to_string()),
+            deemix_arl: std::fs::read_to_string("/config/login.json")
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .and_then(|v| v["arl"].as_str().map(|s| s.to_string()))
+                .or_else(|| env::var("DEEMIX_ARL").ok())
+                .unwrap_or_default(),
             users_file: env::var("USERS_FILE")
                 .unwrap_or_else(|_| "/app/users.json".to_string()),
             audd_api_key: env::var("AUDD_API_KEY").unwrap_or_default(),
             openai_api_key: env::var("OPENAI_API_KEY").unwrap_or_default(),
             whisper_url: env::var("WHISPER_URL").unwrap_or_default(),
-            deemix_bitrate: env::var("DEEMIX_BITRATE").unwrap_or_else(|_| "9".to_string()).parse().unwrap_or(9),
+            deemix_bitrate: std::fs::read_to_string("/config/config.json")
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .and_then(|v| {
+                    v["maxBitrate"].as_u64()
+                        .or_else(|| v["maxBitrate"].as_str().and_then(|s| s.parse::<u64>().ok()))
+                        .map(|n| n as u8)
+                })
+                .or_else(|| {
+                    env::var("DEEMIX_BITRATE")
+                        .unwrap_or_else(|_| "9".to_string())
+                        .parse()
+                        .ok()
+                })
+                .unwrap_or(9),
             deemix_bitrate_lock: env::var("DEEMIX_BITRATE_LOCK").unwrap_or_else(|_| "false".to_string()).to_lowercase() == "true",
             whitelist_enabled: env::var("WHITELIST_ENABLED").unwrap_or_else(|_| "true".to_string()).to_lowercase() == "true",
             whitelist_ids: env::var("WHITELIST_IDS").unwrap_or_default()
@@ -960,6 +970,16 @@ I connect to your personal deemix server and queue music downloads. Just tell me
                 *br = next_bitrate(*br);
                 *br
             };
+            let config_json_path = "/config/config.json";
+            if let Ok(contents) = std::fs::read_to_string(config_json_path) {
+                if let Ok(mut config) = serde_json::from_str::<serde_json::Value>(&contents) {
+                    config["maxBitrate"] = serde_json::json!(new_bitrate);
+                    if let Ok(updated_json) = serde_json::to_string_pretty(&config) {
+                        let _ = std::fs::write(config_json_path, updated_json);
+                        std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
+                    }
+                }
+            }
             let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
             let current_br = new_bitrate;
             let kb = settings_keyboard(&updated, &state.config, current_br);
@@ -1358,25 +1378,8 @@ async fn handle_updatearl(bot: &Bot, msg: &Message, state: &Arc<BotState>, arl: 
     match deemix::login_arl(state, arl).await {
         Ok(_username) => {
             *state.current_arl.lock().await = arl.to_string();
-            bot.edit_message_text(msg.chat.id, sent.id, format!("✅ Logged in!\n🔄 Updating .env file...")).await?;
-
-            match std::fs::read_to_string(&state.config.env_file) {
-                Ok(contents) => {
-                    let updated = regex::Regex::new(r"DEEMIX_ARL=.*").unwrap()
-                        .replace(&contents, format!("DEEMIX_ARL={}", arl))
-                        .to_string();
-                    if let Err(e) = std::fs::write(&state.config.env_file, &updated) {
-                        bot.edit_message_text(msg.chat.id, sent.id, format!("⚠️ Logged in but could not update .env: {}", e)).await?;
-                        return Ok(());
-                    }
-                }
-                Err(e) => {
-                    bot.edit_message_text(msg.chat.id, sent.id, format!("⚠️ Logged in but could not read .env: {}", e)).await?;
-                    return Ok(());
-                }
-            }
-
-            bot.edit_message_text(msg.chat.id, sent.id, "✅ ARL updated and saved! Downloads will use the new ARL immediately.").await?;
+            std::env::set_var("DEEMIX_ARL", arl);
+            bot.edit_message_text(msg.chat.id, sent.id, "✅ ARL updated and logged in! Downloads will use the new ARL immediately.").await?;
         }
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ ARL rejected by deemix: {}", e)).await?; }
     }

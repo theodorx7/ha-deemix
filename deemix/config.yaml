@@ -26,7 +26,6 @@ options:
   env_vars:
     - name: DEEMIX_MUSIC_DIR
       value: /media/MUSIC/! downloads/
-  # НОВЫЕ ОПЦИИ для Teleemix:
   telegram_enabled: true
   telegram_token: ""
   deemix_arl: ""
@@ -41,7 +40,6 @@ schema:
   env_vars:
     - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
       value: "str"
-  # НОВЫЕ СХЕМЫ для Teleemix:
   telegram_enabled: bool
   telegram_token: "str?"
   deemix_arl: "str?"

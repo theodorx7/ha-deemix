@@ -64,7 +64,9 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
         fi
 
         # Внутренние настройки для работы в одном контейнере с deemix
-        set_env "DEEMIX_URL" "http://localhost:6595"
+        SERVER_PORT=$(jq -r '.server_port // 6595' /data/options.json)
+        set_env "DEEMIX_SERVER_PORT" "${SERVER_PORT}"
+        set_env "DEEMIX_URL" "http://localhost:${SERVER_PORT}"
         set_env "DEEMIX_SINGLE_USER" "true"
         set_env "USERS_FILE" "/data/telegram_bot/users.json"
         set_env "RUST_LOG" "info"

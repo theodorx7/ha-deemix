@@ -23,7 +23,7 @@ if [[ "${TELEGRAM_ENABLED}" == "true" ]]; then
     done
 
     # Create data directory
-    mkdir -p /data/telegram_bot
+    mkdir -p /config/telegram_bot
 
     # Log configuration (without exposing secrets)
     echo "[info] DEEMIX_URL: ${DEEMIX_URL}"

@@ -13,7 +13,6 @@ configuration:
           Environment variable value (e.g. /media/downloads/ for
           DEEMIX_MUSIC_DIR, 1000 for PUID).
 
-  # НОВЫЕ ПЕРЕВОДЫ для Teleemix:
   telegram_enabled:
     name: Enable Telegram Bot
     description: >-
@@ -35,8 +34,8 @@ configuration:
     description: >-
       Audio quality for downloads:
       1 = MP3 128kbps (free accounts),
-      3 = MP3 320kbps (Premium),
-      9 = FLAC lossless (HiFi/Premium+).
+      3 = MP3 320kbps
+      9 = FLAC lossless
   deemix_bitrate_lock:
     name: Lock Quality
     description: >-
@@ -46,7 +45,6 @@ configuration:
     name: "Access Control"
     description: >-
       Restrict bot access to only whitelisted user IDs.
-      Leave false to allow all users (default).
   whitelist_ids:
     name: "Allowed User Telegram IDs"
     description: >-

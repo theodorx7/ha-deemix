@@ -1,6 +1,6 @@
 name: "Deemix with telegram bot"
 slug: "deemix"
-version: "4.7.0-5"
+version: "4.7.0-6"
 description: "High-quality music downloader with a telegram bot: remote, chat-based control for automated downloads."
 url: "https://github.com/theodorx7/ha-deemix/"
 image: "ghcr.io/theodorx7/ha-deemix"

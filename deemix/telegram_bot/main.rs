@@ -66,6 +66,7 @@ impl Config {
                 .or_else(|| env::var("DEEMIX_ARL").ok())
                 .unwrap_or_default(),
             users_file: env::var("USERS_FILE")
+                .unwrap_or_else(|_| "/config/telegram_bot/users.json".to_string()),
                 .unwrap_or_else(|_| "/app/users.json".to_string()),
             audd_api_key: env::var("AUDD_API_KEY").unwrap_or_default(),
             openai_api_key: env::var("OPENAI_API_KEY").unwrap_or_default(),

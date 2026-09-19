@@ -65,25 +65,6 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
             ARL_FOR_ENV=$(jq -r '.deemix_arl // ""' /data/options.json)
         fi
         set_env "DEEMIX_ARL" "${ARL_FOR_ENV}"
-        # Инициализация maxBitrate в config.json при первом запуске
-        CONFIG_JSON="/config/config.json"
-        if [ ! -f "${CONFIG_JSON}" ]; then
-            BITRATE_FROM_OPTIONS=$(jq -r '.deemix_bitrate // 9' /data/options.json | tr -d '"')
-            if [ -n "${BITRATE_FROM_OPTIONS}" ] && [[ "${BITRATE_FROM_OPTIONS}" =~ ^[0-9]+$ ]]; then
-                echo "{\"maxBitrate\": ${BITRATE_FROM_OPTIONS}}" > "${CONFIG_JSON}"
-                echo "[info] Created config.json with maxBitrate=${BITRATE_FROM_OPTIONS}"
-            fi
-        fi
-        
-        # Установка ENV из config.json (или из options.json если файл не существует)
-        BITRATE_FOR_ENV=""
-        if [ -f "${CONFIG_JSON}" ]; then
-            BITRATE_FOR_ENV=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null)
-        fi
-        if [ -z "${BITRATE_FOR_ENV}" ] || [ "${BITRATE_FOR_ENV}" = "null" ]; then
-            BITRATE_FOR_ENV=$(jq -r '.deemix_bitrate // 9' /data/options.json)
-        fi
-        set_env "DEEMIX_BITRATE" "${BITRATE_FOR_ENV}"
         set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
 
         # Опциональные API ключи - подлежит удалению
@@ -112,6 +93,26 @@ else
     echo "[info] Telegram bot disabled"
 fi
 # --- КОНЕЦ опций Telegram bot ---
+
+# --- Инициализация config.json для Deemix (вне зависимости от Telegram bot) ---
+CONFIG_JSON="/config/config.json"
+if [ ! -f "${CONFIG_JSON}" ]; then
+    BITRATE_FROM_OPTIONS=$(jq -r '.deemix_bitrate // 9' /data/options.json | tr -d '"')
+    if [ -n "${BITRATE_FROM_OPTIONS}" ] && [[ "${BITRATE_FROM_OPTIONS}" =~ ^[0-9]+$ ]]; then
+        echo "{\"maxBitrate\": ${BITRATE_FROM_OPTIONS}}" > "${CONFIG_JSON}"
+        echo "[info] Created config.json with maxBitrate=${BITRATE_FROM_OPTIONS}"
+    fi
+fi
+
+# Установка ENV DEEMIX_BITRATE из config.json (или из options.json)
+BITRATE_FOR_ENV=""
+if [ -f "${CONFIG_JSON}" ]; then
+    BITRATE_FOR_ENV=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null)
+fi
+if [ -z "${BITRATE_FOR_ENV}" ] || [ "${BITRATE_FOR_ENV}" = "null" ]; then
+    BITRATE_FOR_ENV=$(jq -r '.deemix_bitrate // 9' /data/options.json)
+fi
+set_env "DEEMIX_BITRATE" "${BITRATE_FOR_ENV}"
 
 # Sync DEEMIX_MUSIC_DIR to config.json (env_vars takes precedence)
 if [ -n "${DEEMIX_MUSIC_DIR:-}" ]; then

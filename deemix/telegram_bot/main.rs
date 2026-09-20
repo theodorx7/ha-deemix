@@ -419,7 +419,7 @@ async fn handle_command(
         Command::Help => {
             bot.send_message(
                 msg.chat.id,
-                "ℹ️ What I do:\n\n\
+                "ℹ️ What I do?\n\n\
 I connect to your personal deemix server and queue music downloads for you. Just tell me what you want!\n\n\
 📥 Ways to request music:\n\
 • Type any song or artist name → search and pick from results\n\

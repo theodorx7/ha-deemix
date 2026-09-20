@@ -212,7 +212,7 @@ async fn main() {
 
     // Send startup notification to users with restart_notifications enabled
     {
-        let startup_msg = "🎵 Teleemix is back online!\n\nTap /menu for quick actions.";
+        let startup_msg = "🎵 Deemix is back online!\n\nTap /menu for quick actions.";
         for chat_id in users::all_with_notifications(&state.users) {
             let _ = bot.send_message(teloxide::types::ChatId(chat_id), startup_msg).await;
         }
@@ -389,8 +389,7 @@ async fn handle_command(
         Command::Help => {
             bot.send_message(
                 msg.chat.id,
-                "ℹ️ Teleemix — Full Guide\n\n\
-🎵 What I do:\n\
+                "ℹ️ What I do:\n\n\
 I connect to your personal deemix server and queue music downloads for you. Just tell me what you want!\n\n\
 📥 Ways to request music:\n\
 • Type any song or artist name → search and pick from results\n\
@@ -965,36 +964,31 @@ I connect to your personal deemix server and queue music downloads. Just tell me
                 bot.send_message(msg.chat.id, "🔒 Download quality is locked by the administrator.").await?;
                 return Ok(());
             }
+            
+            // 1. Меняем У СЕБЯ (в памяти бота)
             let new_bitrate = {
                 let mut br = state.current_bitrate.lock().await;
                 *br = next_bitrate(*br);
                 *br
             };
+            
+            // 2. Write to config.json
             let config_json_path = "/config/config.json";
             if let Ok(contents) = std::fs::read_to_string(config_json_path) {
                 if let Ok(mut config) = serde_json::from_str::<serde_json::Value>(&contents) {
                     config["maxBitrate"] = serde_json::json!(new_bitrate);
                     if let Ok(updated_json) = serde_json::to_string_pretty(&config) {
                         let _ = std::fs::write(config_json_path, updated_json);
-                        std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
-                        // Synchronization with HA via the Supervisor API
-                        match update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await {
-                            Ok(_) => {
-                                log::info!("[ha-sync] Bitrate synced to HA options");
-                                
-                                // Restart the add-on to apply changes in the WebUI.
-                                let _ = restart_addon().await;
-                            }
-                            Err(e) => {
-                                log::warn!("[ha-sync] Failed to sync bitrate to HA: {}", e);
-                            }
-                        }
                     }
                 }
             }
+            
+            // 3. Update ENV
+            std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
+            
+            // 4. Send a message to the user
             let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
-            let current_br = new_bitrate;
-            let kb = settings_keyboard(&updated, &state.config, current_br);
+            let kb = settings_keyboard(&updated, &state.config, new_bitrate);
             bot.send_message(
                 msg.chat.id,
                 format!(
@@ -1006,6 +1000,20 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             )
             .reply_markup(kb)
             .await?;
+            
+            // 5. Updating HA options via the Supervisor API
+            match update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await {
+                Ok(_) => {
+                    log::info!("[ha-sync] Bitrate synced to HA options");
+                    
+                    // 6. Restart Add-on
+                    let _ = restart_addon().await;
+                }
+                Err(e) => {
+                    log::warn!("[ha-sync] Failed to sync bitrate to HA: {}", e);
+                }
+            }
+            
             return Ok(());
         }
         t if t.starts_with("🔒 Quality:") => {

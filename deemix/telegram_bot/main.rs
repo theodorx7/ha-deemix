@@ -909,8 +909,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
         }
         "ℹ️ Help" => {
             bot.send_message(msg.chat.id,
-                "ℹ️ Teleemix — Full Guide\n\n\
-🎵 What I do:\n\
+                "ℹ️ What I do\n\n\
 I connect to your personal deemix server and queue music downloads. Just tell me what you want!\n\n\
 📥 Ways to request music:\n\
 • Type any song or artist name → search and pick\n\

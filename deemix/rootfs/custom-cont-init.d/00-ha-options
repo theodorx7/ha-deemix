@@ -20,6 +20,16 @@ while IFS= read -r -d '' key && IFS= read -r value; do
     echo "[info] env: ${key}=${value}"
 done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.json)
 
+# Map the HA options quality label to the numeric deemix bitrate
+bitrate_from_label() {
+    case "${1}" in
+        "MP3 128 kbps")  echo "1" ;;
+        "MP3 320 kbps")  echo "3" ;;
+        "FLAC lossless") echo "9" ;;
+        *) echo "" ;;
+    esac
+}
+
 # --- Apply PUID/PGID to user abc (default 1000:1000) ---
 if [ -n "${PUID}" ] && [ -n "${PGID}" ]; then
     echo "[info] PUID=${PUID}, PGID=${PGID} from env_vars"
@@ -39,14 +49,13 @@ if [ "${PUID}" != "0" ]; then
 fi
 echo "[info] PUID/PGID applied successfully"
 
-# --- ОПЦИИ Telegram bot ---
+# --- Telegram bot options ---
 TELEGRAM_ENABLED=$(jq -r '.telegram_enabled // "false"' /data/options.json 2>/dev/null || echo "false")
 if [ "${TELEGRAM_ENABLED}" = "true" ]; then
     set_env "TELEGRAM_ENABLED" "${TELEGRAM_ENABLED}"
 
-        # Основные настройки Telegram bot
         set_env "TELEGRAM_TOKEN" "$(jq -r '.telegram_token // ""' /data/options.json)"
-        # Инициализация login.json при первом запуске
+        # Initializing login.json on first launch
         LOGIN_FILE="/config/login.json"
         if [ ! -f "${LOGIN_FILE}" ]; then
             ARL_FROM_OPTIONS=$(jq -r '.deemix_arl // ""' /data/options.json)
@@ -56,7 +65,7 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
             fi
         fi
         
-        # Установка ENV из login.json (или из options.json если файл пуст)
+        # Setting ENV from login.json (or from options.json if the file is empty)
         ARL_FOR_ENV=""
         if [ -f "${LOGIN_FILE}" ]; then
             ARL_FOR_ENV=$(jq -r '.arl // empty' "${LOGIN_FILE}" 2>/dev/null)
@@ -67,7 +76,6 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
         set_env "DEEMIX_ARL" "${ARL_FOR_ENV}"
         set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
 
-        # Опциональные API ключи - подлежит удалению
         set_env "AUDD_API_KEY" "$(jq -r '.audd_api_key // ""' /data/options.json)"
         set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
         set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"
@@ -80,7 +88,7 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
             echo "[warn] Whitelist is enabled but WHITELIST_IDS is empty. All users will be blocked until configured."
         fi
 
-        # Внутренние настройки для работы в одном контейнере с deemix
+        # Internal settings for running in the same container as Deemix
         set_env "DEEMIX_SINGLE_USER" "true"
         set_env "USERS_FILE" "/config/telegram_bot/users.json"
         set_env "RUST_LOG" "info"
@@ -89,23 +97,22 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
 else
     echo "[info] Telegram bot disabled"
 fi
-# --- КОНЕЦ опций Telegram bot ---
 
-# --- Инициализация config.json для Deemix (вне зависимости от Telegram bot) ---
+# --- Initialization config.json для Deemix ---
 SERVER_PORT=$(jq -r '.server_port // 6595' /data/options.json)
 set_env "DEEMIX_SERVER_PORT" "${SERVER_PORT}"
 set_env "DEEMIX_URL" "http://localhost:${SERVER_PORT}"
 CONFIG_JSON="/config/config.json"
 if [ ! -f "${CONFIG_JSON}" ]; then
-    BITRATE_FROM_OPTIONS=$(jq -r '.deemix_bitrate // 9' /data/options.json | tr -d '"')
+    BITRATE_FROM_OPTIONS=$(bitrate_from_label "$(jq -r '.deemix_bitrate // "FLAC lossless"' /data/options.json)")
     if [ -n "${BITRATE_FROM_OPTIONS}" ] && [[ "${BITRATE_FROM_OPTIONS}" =~ ^[0-9]+$ ]]; then
         echo "{\"maxBitrate\": ${BITRATE_FROM_OPTIONS}}" > "${CONFIG_JSON}"
         echo "[info] Created config.json with maxBitrate=${BITRATE_FROM_OPTIONS}"
     fi
 fi
 
-# Синхронизируем maxBitrate из HA options при КАЖДОМ запуске
-BITRATE_FROM_OPTIONS=$(jq -r '.deemix_bitrate // 9' /data/options.json | tr -d '"')
+# Synchronization of the Bitrate option from HA settings on every startup
+BITRATE_FROM_OPTIONS=$(bitrate_from_label "$(jq -r '.deemix_bitrate // "FLAC lossless"' /data/options.json)")
 if [ -n "${BITRATE_FROM_OPTIONS}" ] && [[ "${BITRATE_FROM_OPTIONS}" =~ ^[0-9]+$ ]]; then
     if [ -f "${CONFIG_JSON}" ]; then
         CURRENT_BITRATE=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null)
@@ -116,13 +123,13 @@ if [ -n "${BITRATE_FROM_OPTIONS}" ] && [[ "${BITRATE_FROM_OPTIONS}" =~ ^[0-9]+$ 
     fi
 fi
 
-# Установка ENV DEEMIX_BITRATE из config.json (или из options.json)
+# Setting the DEEMIX_BITRATE environment variable from config.json (or options.json)
 BITRATE_FOR_ENV=""
 if [ -f "${CONFIG_JSON}" ]; then
     BITRATE_FOR_ENV=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null)
 fi
 if [ -z "${BITRATE_FOR_ENV}" ] || [ "${BITRATE_FOR_ENV}" = "null" ]; then
-    BITRATE_FOR_ENV=$(jq -r '.deemix_bitrate // 9' /data/options.json)
+    BITRATE_FOR_ENV=$(bitrate_from_label "$(jq -r '.deemix_bitrate // "FLAC lossless"' /data/options.json)")
 fi
 set_env "DEEMIX_BITRATE" "${BITRATE_FOR_ENV}"
 

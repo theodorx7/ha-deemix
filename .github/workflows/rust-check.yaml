@@ -16,4 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Prepare cargo layout (mirrors Dockerfile build stage)
+        run: |
+          mkdir -p src
+          cp telegram_bot/*.rs src/
       - run: cargo check

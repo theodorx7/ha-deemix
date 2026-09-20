@@ -25,22 +25,6 @@ use users::UserSettings;
 use keyboards::{arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
 use voice::{receive_voice_recognize, receive_voice_transcribe};
 
-// ── Dialogue State ────────────────────────────────────────────────────────────
-#[derive(Clone, Default, Debug)]
-pub enum State {
-    #[default]
-    Idle,
-    AwaitingArl,
-    AwaitingSearch,
-    AwaitingAlbum,
-    AwaitingDl,
-    AwaitingSpotify,
-    AwaitingVoiceTranscribe,
-    AwaitingVoiceRecognize,
-}
-
-pub(crate) type MyDialogue = Dialogue<State, InMemStorage<State>>;
-
 // ── URL Patterns ──────────────────────────────────────────────────────────────
 lazy_static::lazy_static! {
     static ref DEEZER_URL_RE: Regex = Regex::new(

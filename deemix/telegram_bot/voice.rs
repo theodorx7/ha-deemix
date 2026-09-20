@@ -529,7 +529,7 @@ pub(crate) async fn process_voice_recognize(
     Ok(())
 }
 
-// ── Message Handler ───────────────────────────────────────────────────────────
+// ── Dialogue Voice Receivers ───────────────────────────────────────────────────────────
 pub(crate) async fn receive_voice_transcribe(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
     dialogue.exit().await.ok();
     let voice = match msg.voice() {

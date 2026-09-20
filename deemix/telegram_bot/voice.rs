@@ -177,8 +177,9 @@ pub async fn lookup_deezer_via_odesli(http: &reqwest::Client, song_link: &str) -
     deezer_url
 }
 
-/// Look up a Deezer URL via the Odesli API using a Spotify URL directly.
-/// Odesli accepts Spotify track URLs and returns platform links including Deezer.
+/// Look up a Deezer URL via the Odesli API.
+/// Accepts any streaming URL Odesli understands (Spotify, YouTube, Apple Music)
+/// and returns the matching Deezer link if one exists.
 pub async fn lookup_deezer_via_spotify(http: &reqwest::Client, spotify_url: &str) -> Option<String> {
     log::info!("Odesli lookup via Spotify URL: {}", spotify_url);
 

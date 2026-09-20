@@ -1016,8 +1016,12 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             // 3. Update ENV
             std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
             
-            // 4. Send a message about the process
-            bot.send_message(msg.chat.id, "⏳ Applying quality setting... please wait.").await?;
+            // 4. Send a message about the process (with updated keyboard!)
+            let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
+            let kb = settings_keyboard(&updated, &state.config, new_bitrate);
+            bot.send_message(msg.chat.id, "⏳ Applying quality setting... please wait.")
+                .reply_markup(kb)
+                .await?;
 
             // 5. Write flag file for post-restart notification
             let flag_path = "/config/telegram_bot/pending_quality_change.json";

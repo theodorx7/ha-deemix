@@ -208,7 +208,7 @@ async fn main() {
 
     deemix::login(&state).await;
 
-    log::info!("Teleemix bot starting...");
+    log::info!("Telegram bot starting...");
 
     // Send startup notification (skip if quality change restart)
     let quality_flag_path = "/config/telegram_bot/pending_quality_change.json";
@@ -220,33 +220,27 @@ async fn main() {
             let _ = bot.send_message(teloxide::types::ChatId(chat_id), startup_msg).await;
         }
     }
-
     // Check for pending quality change notification (from pre-restart)
     {
         let flag_path = "/config/telegram_bot/pending_quality_change.json";
         if let Ok(contents) = std::fs::read_to_string(flag_path) {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&contents) {
-                if let Some(bitrate) = data["bitrate"].as_u64() {
-                    let label = bitrate_label(bitrate as u8);
-                    let msg_text = format!(
-                        "🎚️ Download quality changed to: {}\n\n⚠️ This affects ALL users on this server.",
-                        label
-                    );
-                    
-                    // Send to ALL users (independently of restart_notifications)
-                    let all_ids: Vec<i64> = {
-                        if let Ok(map) = state.users.read() {
-                            map.keys().filter_map(|k| k.parse::<i64>().ok()).collect()
-                        } else {
-                            vec![]
-                        }
-                    };
-                    
-                    for chat_id in all_ids {
+            let bitrate = serde_json::from_str::<serde_json::Value>(&contents)
+                .ok()
+                .and_then(|d| d["bitrate"].as_u64());
+            
+            if let Some(bitrate) = bitrate {
+                let msg_text = format!(
+                    "🎚️ Download quality changed to: {}\n\n⚠️ This affects ALL users on this server.",
+                    bitrate_label(bitrate as u8)
+                );
+                
+                if let Ok(map) = state.users.read() {
+                    for chat_id in map.keys().filter_map(|k| k.parse::<i64>().ok()) {
                         let _ = bot.send_message(teloxide::types::ChatId(chat_id), &msg_text).await;
                     }
                 }
             }
+            
             // Always remove the flag file
             let _ = std::fs::remove_file(flag_path);
         }
@@ -414,7 +408,7 @@ async fn handle_command(
             let kb = main_keyboard(&user_settings, &state.config);
             bot.send_message(
                 msg.chat.id,
-                "👋 Hey! I'm Teleemix — your personal music download assistant.\n\nJust send me a song name, a Deezer link, or a Spotify link and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
+                "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name, a Deezer link, or a Spotify link and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
             )
             .reply_markup(kb)
             .await?;
@@ -1461,99 +1455,70 @@ fn bitrate_label(bitrate: u8) -> &'static str {
 fn next_bitrate(current: u8) -> u8 {
     match current { 9 => 3, 3 => 1, _ => 9 }
 }
-/// Update an add-on option in HA via the Supervisor API
-async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), String> {
-    let token = match env::var("SUPERVISOR_TOKEN") {
-        Ok(t) => t,
-        Err(_) => return Err("SUPERVISOR_TOKEN not set".to_string()),
-    };
+
+/// Generic Supervisor API request
+async fn supervisor_request(
+    method: &str,
+    path: &str,
+    body: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let token = env::var("SUPERVISOR_TOKEN")
+        .map_err(|_| "SUPERVISOR_TOKEN not set".to_string())?;
     
     let client = reqwest::Client::new();
+    let url = format!("http://supervisor{}", path);
     
-    // 1. Get current application options via /addons/self/info
-    let info_url = "http://supervisor/addons/self/info";
-    let info_response = client
-        .get(info_url)
-        .header("Authorization", format!("Bearer {}", token))
-        .send()
-        .await
+    let http_method = reqwest::Method::from_bytes(method.as_bytes())
         .map_err(|e| e.to_string())?;
     
-    if !info_response.status().is_success() {
-        return Err(format!("Failed to get addon info: {}", info_response.status()));
+    let mut request = client.request(http_method, &url)
+        .header("Authorization", format!("Bearer {}", token));
+    
+    if let Some(body) = body {
+        request = request.json(&body);
     }
     
-    let info: serde_json::Value = info_response.json().await
+    let response = request.send().await
         .map_err(|e| e.to_string())?;
     
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!("Supervisor API error: {}", status));
+    }
+    
+    response.json().await
+        .map_err(|e| e.to_string())
+}
+
+/// Update an add-on option in HA via the Supervisor API
+async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), String> {
+    // 1. Get current options
+    let info = supervisor_request("GET", "/addons/self/info", None).await?;
     let mut options = info["data"]["options"].as_object()
         .ok_or_else(|| "Failed to get addon options".to_string())?
         .clone();
+    
+    // 2. Update the key
     options.insert(key.to_string(), value);
     
-    // 2. Updating options via the correct endpoint.
-    let url = "http://supervisor/addons/self/options".to_string();
-    
+    // 3. Send full options
     let payload = serde_json::json!({ "options": options });
+    supervisor_request("POST", "/addons/self/options", Some(payload)).await?;
     
-    let response = client
-        .post(&url)
-        .header("Authorization", format!("Bearer {}", token))
-        .header("Content-Type", "application/json")
-        .json(&payload)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    
-    if response.status().is_success() {
-        log::info!("[ha-sync] Updated option '{}' in HA", key);
-        Ok(())
-    } else {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        Err(format!("Supervisor API error: {} - {}", status, body))
-    }
+    log::info!("[ha-sync] Updated option '{}' in HA", key);
+    Ok(())
 }
 
 /// Restart the add-on via the Supervisor API
 async fn restart_addon() -> Result<(), String> {
-    let token = match env::var("SUPERVISOR_TOKEN") {
-        Ok(t) => t,
-        Err(_) => return Err("SUPERVISOR_TOKEN not set".to_string()),
-    };
-    
-    let client = reqwest::Client::new();
-    
-    // Get slug add-on
-    let info_url = "http://supervisor/addons/self/info";
-    let info_response = client
-        .get(info_url)
-        .header("Authorization", format!("Bearer {}", token))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    
-    let info: serde_json::Value = info_response.json().await
-        .map_err(|e| e.to_string())?;
-    
+    let info = supervisor_request("GET", "/addons/self/info", None).await?;
     let slug = info["data"]["slug"].as_str()
         .ok_or_else(|| "Failed to get addon slug".to_string())?;
     
-    // Restart
-    let url = format!("http://supervisor/addons/{}/restart", slug);
-    let response = client
-        .post(&url)
-        .header("Authorization", format!("Bearer {}", token))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    supervisor_request("POST", &format!("/addons/{}/restart", slug), None).await?;
     
-    if response.status().is_success() {
-        log::info!("[ha-sync] Add-on restart initiated");
-        Ok(())
-    } else {
-        Err(format!("Supervisor API restart error: {}", response.status()))
-    }
+    log::info!("[ha-sync] Add-on restart initiated");
+    Ok(())
 }
 
 fn capitalize(s: &str) -> String {

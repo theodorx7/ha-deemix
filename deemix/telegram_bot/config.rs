@@ -1,0 +1,161 @@
+//! Core configuration, shared state and dialogue types for the telegram bot.
+//!
+//! - `Config`: per-run static configuration assembled from /config files
+//!   and ENV variables (fallback chain, see DOCS §3.2).
+//! - `BotState`: shared runtime state (users db, pending voices, bitrate, ARL).
+//! - `State` / `MyDialogue`: teloxide dialogue machine types.
+//! - `Command`: bot command enum used by dptree dispatching.
+
+use std::collections::HashMap;
+use std::env;
+use std::sync::Arc;
+
+use reqwest::Client;
+use teloxide::dispatching::dialogue::InMemStorage;
+use teloxide::prelude::*;
+use teloxide::utils::command::BotCommands;
+use tokio::sync::Mutex;
+
+use crate::users::UsersDb;
+
+// ── Dialogue State ────────────────────────────────────────────────────────────
+#[derive(Clone, Default, Debug)]
+pub enum State {
+    #[default]
+    Idle,
+    AwaitingArl,
+    AwaitingSearch,
+    AwaitingAlbum,
+    AwaitingDl,
+    AwaitingSpotify,
+    AwaitingVoiceTranscribe,
+    AwaitingVoiceRecognize,
+}
+
+pub(crate) type MyDialogue = Dialogue<State, InMemStorage<State>>;
+
+// ── Config ────────────────────────────────────────────────────────────────────
+#[derive(Clone)]
+pub struct Config {
+    pub deemix_url: String,
+    pub deemix_arl: String,
+    pub users_file: String,
+    pub audd_api_key: String,
+    pub openai_api_key: String,
+    pub whisper_url: String,
+    pub deemix_bitrate: u8,
+    pub deemix_bitrate_lock: bool,
+    pub whitelist_enabled: bool,
+    pub whitelist_ids: Vec<i64>,
+}
+
+impl Config {
+    pub fn from_env() -> Self {
+        Self {
+            deemix_url: env::var("DEEMIX_URL")
+                .unwrap_or_else(|_| "http://localhost:6595".to_string()),
+            deemix_arl: std::fs::read_to_string("/config/login.json")
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .and_then(|v| v["arl"].as_str().map(|s| s.to_string()))
+                .or_else(|| env::var("DEEMIX_ARL").ok())
+                .unwrap_or_default(),
+            users_file: env::var("USERS_FILE")
+                .unwrap_or_else(|_| "/config/telegram_bot/users.json".to_string()),
+            audd_api_key: env::var("AUDD_API_KEY").unwrap_or_default(),
+            openai_api_key: env::var("OPENAI_API_KEY").unwrap_or_default(),
+            whisper_url: env::var("WHISPER_URL").unwrap_or_default(),
+            deemix_bitrate: std::fs::read_to_string("/config/config.json")
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .and_then(|v| {
+                    v["maxBitrate"].as_u64()
+                        .or_else(|| v["maxBitrate"].as_str().and_then(|s| s.parse::<u64>().ok()))
+                        .map(|n| n as u8)
+                })
+                .or_else(|| {
+                    env::var("DEEMIX_BITRATE")
+                        .unwrap_or_else(|_| "9".to_string())
+                        .parse()
+                        .ok()
+                })
+                .unwrap_or(9),
+            deemix_bitrate_lock: env::var("DEEMIX_BITRATE_LOCK").unwrap_or_else(|_| "false".to_string()).to_lowercase() == "true",
+            whitelist_enabled: env::var("WHITELIST_ENABLED").unwrap_or_else(|_| "true".to_string()).to_lowercase() == "true",
+            whitelist_ids: env::var("WHITELIST_IDS").unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .filter_map(|s| s.parse::<i64>().ok())
+                .collect(),
+        }
+    }
+
+
+    pub fn audd_enabled(&self) -> bool { !self.audd_api_key.is_empty() }
+    pub fn whisper_enabled(&self) -> bool { !self.openai_api_key.is_empty() || !self.whisper_url.is_empty() }
+    pub fn is_user_allowed(&self, user_id: i64) -> bool {
+        !self.whitelist_enabled || self.whitelist_ids.contains(&user_id)
+    }
+    pub fn is_whitelist_empty(&self) -> bool {
+        self.whitelist_enabled && self.whitelist_ids.is_empty()
+    }
+}
+
+// ── Bot State ─────────────────────────────────────────────────────────────────
+#[derive(Clone)]
+pub struct BotState {
+    pub config: Arc<Config>,
+    pub http: Client,
+    pub users: UsersDb,
+    pub pending_voices: Arc<Mutex<HashMap<String, String>>>, // short_id -> file_id
+    pub current_bitrate: Arc<Mutex<u8>>, // runtime-changeable bitrate
+    pub current_arl: Arc<Mutex<String>>, // updated via /updatearl, used for auto re-login
+}
+
+impl BotState {
+    pub fn new(config: Config, users: UsersDb) -> Self {
+        let http = Client::builder()
+            .cookie_store(true)
+            .build()
+            .expect("Failed to build HTTP client");
+        let default_bitrate = config.deemix_bitrate;
+        let default_arl = config.deemix_arl.clone();
+        Self {
+            config: Arc::new(config),
+            http,
+            users,
+            pending_voices: Arc::new(Mutex::new(HashMap::new())),
+            current_bitrate: Arc::new(Mutex::new(default_bitrate)),
+            current_arl: Arc::new(Mutex::new(default_arl)),
+        }
+    }
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────────
+#[derive(BotCommands, Clone)]
+#[command(rename_rule = "lowercase", description = "Teleemix commands:")]
+pub(crate) enum Command {
+    #[command(description = "Welcome message")]
+    Start,
+    #[command(description = "Show all commands and info")]
+    Help,
+    #[command(description = "Check deemix status")]
+    Status,
+    #[command(description = "Queue a Deezer URL")]
+    Dl,
+    #[command(description = "Search for a track")]
+    Search,
+    #[command(description = "Search for an album")]
+    Album,
+    #[command(description = "Download from a streaming link (Spotify, YouTube, Apple Music)")]
+    Sp,
+    #[command(description = "Clear completed downloads from queue")]
+    Clearqueue,
+    #[command(description = "Show quick action buttons")]
+    Menu,
+    #[command(description = "Show settings")]
+    Settings,
+    #[command(description = "Update Deezer ARL")]
+    Updatearl,
+}

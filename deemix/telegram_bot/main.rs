@@ -6,15 +6,13 @@ use reqwest::Client;
 use teloxide::{
     dispatching::dialogue::InMemStorage,
     prelude::*,
-    types::{
-        CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup,
-        KeyboardButton, KeyboardMarkup,
-    },
+    types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup},
     utils::command::BotCommands,
 };
 
 mod config;
 mod spotify;
+mod keyboards;
 mod supervisor;
 mod deemix;
 mod users;
@@ -24,6 +22,7 @@ mod youtube;
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
 use users::UserSettings;
+use keyboards::{arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
 use voice::{receive_voice_recognize, receive_voice_transcribe};
 
 // ── Dialogue State ────────────────────────────────────────────────────────────
@@ -178,66 +177,6 @@ async fn main() {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 pub(crate) fn user_id_from_msg(msg: &Message) -> i64 {
     msg.from().map(|u| u.id.0 as i64).unwrap_or(0)
-}
-
-fn settings_keyboard(s: &UserSettings, config: &Config, bitrate: u8) -> KeyboardMarkup {
-    let notif = if s.restart_notifications { "🔔 Restart notifications: ON" } else { "🔕 Restart notifications: OFF" };
-    let voice = if s.voice_search && config.whisper_enabled() { "🎤 Voice search: ON" } else { "🎤 Voice search: OFF" };
-    let recog = if s.song_recognition && config.audd_enabled() { "🎵 Song recognition: ON" } else { "🎵 Song recognition: OFF" };
-    let bitrate_btn = if config.deemix_bitrate_lock {
-        format!("🔒 Quality: {} (locked)", bitrate_label(bitrate))
-    } else {
-        format!("🎚️ Quality: {} (tap to change)", bitrate_label(bitrate))
-    };
-
-    KeyboardMarkup::new(vec![
-        vec![KeyboardButton::new(notif)],
-        vec![KeyboardButton::new(voice)],
-        vec![KeyboardButton::new(recog)],
-        vec![KeyboardButton::new(bitrate_btn)],
-        vec![KeyboardButton::new("🔑 Update ARL")],
-        vec![KeyboardButton::new("🔙 Back to menu")],
-    ])
-    .resize_keyboard(true)
-}
-
-fn arl_cancel_keyboard() -> InlineKeyboardMarkup {
-    InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback("❌ Cancel", "cancel_arl")]])
-}
-
-fn main_keyboard(s: &UserSettings, config: &Config) -> KeyboardMarkup {
-    let mut rows = vec![
-        vec![
-            KeyboardButton::new("🔍 Search a track"),
-            KeyboardButton::new("💿 Search an album"),
-        ],
-        vec![
-            KeyboardButton::new("🔗 From streaming link"),
-            KeyboardButton::new("🎵 From Deezer URL"),
-        ],
-    ];
-
-    // Only show voice buttons if features are configured AND user has them enabled
-    let show_voice = config.whisper_enabled() && s.voice_search;
-    let show_recog = config.audd_enabled() && s.song_recognition;
-
-    if show_voice || show_recog {
-        let mut voice_row = vec![];
-        if show_voice { voice_row.push(KeyboardButton::new("🎤 Voice search")); }
-        if show_recog { voice_row.push(KeyboardButton::new("🎵 Recognize song")); }
-        rows.push(voice_row);
-    }
-
-    rows.push(vec![
-        KeyboardButton::new("📊 Check status"),
-        KeyboardButton::new("🧹 Clear queue"),
-    ]);
-    rows.push(vec![
-        KeyboardButton::new("⚙️ Settings"),
-        KeyboardButton::new("ℹ️ Help"),
-    ]);
-
-    KeyboardMarkup::new(rows).resize_keyboard(true)
 }
 
 // ── Unauthorized Handlers ────────────────────────────────────────────────────
@@ -1028,19 +967,6 @@ async fn handle_updatearl(bot: &Bot, msg: &Message, state: &Arc<BotState>, arl: 
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ ARL rejected by deemix: {}", e)).await?; }
     }
     Ok(())
-}
-
-fn bitrate_label(bitrate: u8) -> &'static str {
-    match bitrate {
-        9 => "FLAC (lossless)",
-        3 => "MP3 320kbps",
-        1 => "MP3 128kbps",
-        _ => "Unknown",
-    }
-}
-
-fn next_bitrate(current: u8) -> u8 {
-    match current { 9 => 3, 3 => 1, _ => 9 }
 }
 
 fn capitalize(s: &str) -> String {

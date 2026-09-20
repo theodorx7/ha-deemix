@@ -777,6 +777,67 @@ async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<BotState>, d
     process_voice_recognize(&bot, msg.chat.id, sent.id, audio_bytes, &state).await
 }
 
+/// Handle quality change button press
+async fn handle_quality_change(
+    bot: &Bot,
+    msg: &Message,
+    state: &Arc<BotState>,
+) -> ResponseResult<()> {
+    if state.config.deemix_bitrate_lock {
+        bot.send_message(msg.chat.id, "🔒 Download quality is locked by the administrator.").await?;
+        return Ok(());
+    }
+    
+    // 1. Update the bot's memory
+    let new_bitrate = {
+        let mut br = state.current_bitrate.lock().await;
+        *br = next_bitrate(*br);
+        *br
+    };
+    
+    // 2. Write to config.json
+    let config_json_path = "/config/config.json";
+    if let Ok(contents) = std::fs::read_to_string(config_json_path) {
+        if let Ok(mut config) = serde_json::from_str::<serde_json::Value>(&contents) {
+            config["maxBitrate"] = serde_json::json!(new_bitrate);
+            if let Ok(updated_json) = serde_json::to_string_pretty(&config) {
+                let _ = std::fs::write(config_json_path, updated_json);
+            }
+        }
+    }
+    
+    // 3. Update ENV
+    std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
+    
+    // 4. Send a message about the process (with updated keyboard!)
+    let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
+    let kb = settings_keyboard(&updated, &state.config, new_bitrate);
+    bot.send_message(msg.chat.id, "⏳ Applying quality setting... please wait.")
+        .reply_markup(kb)
+        .await?;
+
+    // 5. Write flag file for post-restart notification
+    let flag_path = "/config/telegram_bot/pending_quality_change.json";
+    let flag_data = serde_json::json!({ "bitrate": new_bitrate });
+    let _ = std::fs::write(flag_path, serde_json::to_string(&flag_data).unwrap());
+    
+    // 6. Updating HA options via the Supervisor API
+    match update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await {
+        Ok(_) => {
+            log::info!("[ha-sync] Bitrate synced to HA options");
+            
+            // 7. Restart Add-on
+            let _ = restart_addon().await;
+        }
+        Err(e) => {
+            log::warn!("[ha-sync] Failed to sync bitrate to HA: {}", e);
+            // Remove flag file — restart won't happen, notification not needed
+            let _ = std::fs::remove_file("/config/telegram_bot/pending_quality_change.json");
+        }
+    }
+    Ok(())
+}
+
 async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
     // Auto-create user
     let user_settings = users::get_or_create(&state.users, user_id_from_msg(&msg));
@@ -987,59 +1048,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             return Ok(());
         }
         t if t.starts_with("🎚️ Quality:") => {
-            if state.config.deemix_bitrate_lock {
-                bot.send_message(msg.chat.id, "🔒 Download quality is locked by the administrator.").await?;
-                return Ok(());
-            }
-            
-            // 1. Меняем У СЕБЯ (в памяти бота)
-            let new_bitrate = {
-                let mut br = state.current_bitrate.lock().await;
-                *br = next_bitrate(*br);
-                *br
-            };
-            
-            // 2. Write to config.json
-            let config_json_path = "/config/config.json";
-            if let Ok(contents) = std::fs::read_to_string(config_json_path) {
-                if let Ok(mut config) = serde_json::from_str::<serde_json::Value>(&contents) {
-                    config["maxBitrate"] = serde_json::json!(new_bitrate);
-                    if let Ok(updated_json) = serde_json::to_string_pretty(&config) {
-                        let _ = std::fs::write(config_json_path, updated_json);
-                    }
-                }
-            }
-            
-            // 3. Update ENV
-            std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
-            
-            // 4. Send a message about the process (with updated keyboard!)
-            let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
-            let kb = settings_keyboard(&updated, &state.config, new_bitrate);
-            bot.send_message(msg.chat.id, "⏳ Applying quality setting... please wait.")
-                .reply_markup(kb)
-                .await?;
-
-            // 5. Write flag file for post-restart notification
-            let flag_path = "/config/telegram_bot/pending_quality_change.json";
-            let flag_data = serde_json::json!({ "bitrate": new_bitrate });
-            let _ = std::fs::write(flag_path, serde_json::to_string(&flag_data).unwrap());
-            
-            // 6. Updating HA options via the Supervisor API
-            match update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await {
-                Ok(_) => {
-                    log::info!("[ha-sync] Bitrate synced to HA options");
-                    
-                    // 7. Restart Add-on
-                    let _ = restart_addon().await;
-                }
-                Err(e) => {
-                    log::warn!("[ha-sync] Failed to sync bitrate to HA: {}", e);
-                    // Remove flag file — restart won't happen, notification not needed
-                    let _ = std::fs::remove_file("/config/telegram_bot/pending_quality_change.json");
-                }
-            }
-            
+            handle_quality_change(&bot, &msg, &state).await?;
             return Ok(());
         }
         t if t.starts_with("🔒 Quality:") => {

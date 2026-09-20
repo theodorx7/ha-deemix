@@ -21,7 +21,7 @@ mod youtube;
 
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
-use keyboards::{arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
+use keyboards::{arl_cancel_keyboard, bitrate_ha_label, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
 use voice::{receive_voice_recognize, receive_voice_transcribe};
 use streaming::{
     handle_streaming_link, APPLE_MUSIC_RE, SPOTIFY_ALBUM_RE,
@@ -388,7 +388,7 @@ async fn handle_quality_change(
     let _ = std::fs::write(flag_path, serde_json::to_string(&flag_data).unwrap());
     
     // 6. Updating HA options via the Supervisor API
-    match supervisor::update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await {
+    match supervisor::update_ha_option("deemix_bitrate", serde_json::json!(bitrate_ha_label(new_bitrate))).await {
         Ok(_) => {
             log::info!("[ha-sync] Bitrate synced to HA options");
             

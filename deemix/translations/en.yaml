@@ -16,7 +16,7 @@ configuration:
   telegram_enabled:
     name: Enable Telegram Bot
     description: >-
-      Enable the Teleemix Telegram bot for remote music downloads.
+      Enable the Telegram bot for remote music downloads.
       Requires a Telegram bot token from @BotFather.
   telegram_token:
     name: Telegram Bot Token
@@ -28,14 +28,8 @@ configuration:
     description: >-
       Your Deezer ARL token for authentication.
       Get it from your browser cookies on deezer.com.
-      Required for downloading music.
   deemix_bitrate:
     name: Download Quality
-    description: >-
-      Audio quality for downloads:
-      1 = MP3 128kbps (free accounts),
-      3 = MP3 320kbps
-      9 = FLAC lossless
   deemix_bitrate_lock:
     name: Lock Quality
     description: >-

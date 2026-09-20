@@ -20,7 +20,6 @@ mod youtube;
 
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
-use users::UserSettings;
 use keyboards::{arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
 use voice::{receive_voice_recognize, receive_voice_transcribe};
 

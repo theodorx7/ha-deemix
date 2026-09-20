@@ -210,8 +210,11 @@ async fn main() {
 
     log::info!("Teleemix bot starting...");
 
-    // Send startup notification to users with restart_notifications enabled
-    {
+    // Send startup notification (skip if quality change restart)
+    let quality_flag_path = "/config/telegram_bot/pending_quality_change.json";
+    let has_quality_flag = std::path::Path::new(&quality_flag_path).exists();
+    
+    if !has_quality_flag {
         let startup_msg = "🎵 Deemix is back online!\n\nTap /menu for quick actions.";
         for chat_id in users::all_with_notifications(&state.users) {
             let _ = bot.send_message(teloxide::types::ChatId(chat_id), startup_msg).await;
@@ -1038,6 +1041,8 @@ I connect to your personal deemix server and queue music downloads. Just tell me
                 }
                 Err(e) => {
                     log::warn!("[ha-sync] Failed to sync bitrate to HA: {}", e);
+                    // Remove flag file — restart won't happen, notification not needed
+                    let _ = std::fs::remove_file("/config/telegram_bot/pending_quality_change.json");
                 }
             }
             

@@ -14,7 +14,7 @@ jobs:
       run:
         working-directory: deemix
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Prepare cargo layout (mirrors Dockerfile build stage)
         run: |

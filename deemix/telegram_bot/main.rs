@@ -618,6 +618,7 @@ async fn handle_quality_change(
     Ok(())
 }
 
+// ── Message Handler ───────────────────────────────────────────────────────────
 async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
     // Auto-create user
     let user_settings = users::get_or_create(&state.users, user_id_from_msg(&msg));

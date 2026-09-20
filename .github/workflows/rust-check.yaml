@@ -1,0 +1,19 @@
+name: Rust check
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "deemix/Cargo.toml"
+      - "deemix/telegram_bot/**"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deemix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo check

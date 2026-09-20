@@ -218,6 +218,37 @@ async fn main() {
         }
     }
 
+    // Check for pending quality change notification (from pre-restart)
+    {
+        let flag_path = "/config/telegram_bot/pending_quality_change.json";
+        if let Ok(contents) = std::fs::read_to_string(flag_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&contents) {
+                if let Some(bitrate) = data["bitrate"].as_u64() {
+                    let label = bitrate_label(bitrate as u8);
+                    let msg_text = format!(
+                        "🎚️ Download quality changed to: {}\n\n⚠️ This affects ALL users on this server.",
+                        label
+                    );
+                    
+                    // Send to ALL users (independently of restart_notifications)
+                    let all_ids: Vec<i64> = {
+                        if let Ok(map) = state.users.read() {
+                            map.keys().filter_map(|k| k.parse::<i64>().ok()).collect()
+                        } else {
+                            vec![]
+                        }
+                    };
+                    
+                    for chat_id in all_ids {
+                        let _ = bot.send_message(teloxide::types::ChatId(chat_id), &msg_text).await;
+                    }
+                }
+            }
+            // Always remove the flag file
+            let _ = std::fs::remove_file(flag_path);
+        }
+    }
+    
     let storage = InMemStorage::<State>::new();
 
     let handler = dptree::entry()
@@ -985,27 +1016,20 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             // 3. Update ENV
             std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
             
-            // 4. Send a message to the user
-            let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
-            let kb = settings_keyboard(&updated, &state.config, new_bitrate);
-            bot.send_message(
-                msg.chat.id,
-                format!(
-                    "🎚️ Download quality changed to: {}
+            // 4. Send a message about the process
+            bot.send_message(msg.chat.id, "⏳ Applying quality setting... please wait.").await?;
 
-⚠️ This affects ALL users on this server.",
-                    bitrate_label(new_bitrate)
-                ),
-            )
-            .reply_markup(kb)
-            .await?;
+            // 5. Write flag file for post-restart notification
+            let flag_path = "/config/telegram_bot/pending_quality_change.json";
+            let flag_data = serde_json::json!({ "bitrate": new_bitrate });
+            let _ = std::fs::write(flag_path, serde_json::to_string(&flag_data).unwrap());
             
-            // 5. Updating HA options via the Supervisor API
+            // 6. Updating HA options via the Supervisor API
             match update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await {
                 Ok(_) => {
                     log::info!("[ha-sync] Bitrate synced to HA options");
                     
-                    // 6. Restart Add-on
+                    // 7. Restart Add-on
                     let _ = restart_addon().await;
                 }
                 Err(e) => {

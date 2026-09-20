@@ -2,10 +2,10 @@ name: Rust check
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "deemix/Cargo.toml"
-      - "deemix/telegram_bot/**"
+#  push:
+#    paths:
+#      - "deemix/Cargo.toml"
+#      - "deemix/telegram_bot/**"
 
 jobs:
   check:

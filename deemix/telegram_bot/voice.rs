@@ -298,6 +298,7 @@ pub(crate) async fn handle_voice_message(
     return Ok(());
 }
 
+// ── Voice Callback Handler ────────────────────────────────────────────────────
 pub(crate) async fn handle_voice_callback(
     bot: &Bot,
     q: &CallbackQuery,

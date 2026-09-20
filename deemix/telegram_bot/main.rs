@@ -7,7 +7,6 @@ use teloxide::{
     dispatching::dialogue::InMemStorage,
     prelude::*,
     types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup},
-    utils::command::BotCommands,
 };
 
 mod config;

@@ -26,7 +26,7 @@ configuration:
   deemix_arl:
     name: Deezer ARL
     description: >-
-      Your Deezer ARL token for authentication.
+      Deezer ARL token for authentication.
       Get it from your browser cookies on deezer.com.
   deemix_bitrate:
     name: Download Quality

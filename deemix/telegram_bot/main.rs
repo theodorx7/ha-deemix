@@ -978,7 +978,17 @@ I connect to your personal deemix server and queue music downloads. Just tell me
                         let _ = std::fs::write(config_json_path, updated_json);
                         std::env::set_var("DEEMIX_BITRATE", new_bitrate.to_string());
                         // Synchronization with HA via the Supervisor API
-                        let _ = update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await;
+                        match update_ha_option("deemix_bitrate", serde_json::json!(new_bitrate)).await {
+                            Ok(_) => {
+                                log::info!("[ha-sync] Bitrate synced to HA options");
+                                
+                                // Restart the add-on to apply changes in the WebUI.
+                                let _ = restart_addon().await;
+                            }
+                            Err(e) => {
+                                log::warn!("[ha-sync] Failed to sync bitrate to HA: {}", e);
+                            }
+                        }
                     }
                 }
             }
@@ -1462,6 +1472,47 @@ async fn update_ha_option(key: &str, value: serde_json::Value) -> Result<(), Str
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
         Err(format!("Supervisor API error: {} - {}", status, body))
+    }
+}
+
+/// Restart the add-on via the Supervisor API
+async fn restart_addon() -> Result<(), String> {
+    let token = match env::var("SUPERVISOR_TOKEN") {
+        Ok(t) => t,
+        Err(_) => return Err("SUPERVISOR_TOKEN not set".to_string()),
+    };
+    
+    let client = reqwest::Client::new();
+    
+    // Get slug add-on
+    let info_url = "http://supervisor/addons/self/info";
+    let info_response = client
+        .get(info_url)
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    let info: serde_json::Value = info_response.json().await
+        .map_err(|e| e.to_string())?;
+    
+    let slug = info["data"]["slug"].as_str()
+        .ok_or_else(|| "Failed to get addon slug".to_string())?;
+    
+    // Restart
+    let url = format!("http://supervisor/addons/{}/restart", slug);
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    if response.status().is_success() {
+        log::info!("[ha-sync] Add-on restart initiated");
+        Ok(())
+    } else {
+        Err(format!("Supervisor API restart error: {}", response.status()))
     }
 }
 

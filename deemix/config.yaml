@@ -30,7 +30,6 @@ options:
       value: ""
   telegram_enabled: true
   telegram_token: ""
-  deemix_arl: ""
   deemix_bitrate_lock: false
   whitelist_enabled: true
   whitelist_ids: ""
@@ -41,7 +40,6 @@ schema:
   env_vars: []
   telegram_enabled: bool
   telegram_token: "str?"
-  deemix_arl: "str?"
   deemix_bitrate_lock: bool
   whitelist_enabled: bool
   whitelist_ids: "str?"

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-teloxide = { version = "0.17.0", features = ["macros", "rustls"], default-features = false }
+teloxide = { version = "0.17", features = ["macros", "rustls"], default-features = false }
 reqwest = { version = "0.13", features = ["json", "cookies", "rustls", "multipart", "query"], default-features = false }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }

@@ -258,7 +258,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
 
         Command::Settings => {
             let current_br = *state.current_bitrate.lock().await;
-    let kb = settings_keyboard(&user_settings, &state.config, current_br);
+            let kb = settings_keyboard(&user_settings, &state.config, current_br);
             bot.send_message(msg.chat.id, "⚙️ Your settings — tap to toggle:").reply_markup(kb).await?;
         }
 
@@ -453,7 +453,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
         }
         "⚙️ Settings" => {
             let current_br = *state.current_bitrate.lock().await;
-    let kb = settings_keyboard(&user_settings, &state.config, current_br);
+            let kb = settings_keyboard(&user_settings, &state.config, current_br);
             bot.send_message(msg.chat.id, "⚙️ Your settings — tap to toggle:").reply_markup(kb).await?;
             return Ok(());
         }
@@ -500,7 +500,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             });
             let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
             let current_br = *state.current_bitrate.lock().await;
-    let kb = settings_keyboard(&updated, &state.config, current_br);
+            let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.restart_notifications { "ON" } else { "OFF" };
             bot.send_message(msg.chat.id, format!("🔔 Restart notifications: {}", status)).reply_markup(kb).await?;
             return Ok(());
@@ -515,7 +515,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             });
             let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
             let current_br = *state.current_bitrate.lock().await;
-    let kb = settings_keyboard(&updated, &state.config, current_br);
+            let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.voice_search { "ON" } else { "OFF" };
             bot.send_message(msg.chat.id, format!("🎤 Voice search: {}", status)).reply_markup(kb).await?;
             return Ok(());
@@ -538,7 +538,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             });
             let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
             let current_br = *state.current_bitrate.lock().await;
-    let kb = settings_keyboard(&updated, &state.config, current_br);
+            let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.song_recognition { "ON" } else { "OFF" };
             bot.send_message(msg.chat.id, format!("🎵 Song recognition: {}", status)).reply_markup(kb).await?;
             return Ok(());

@@ -20,16 +20,6 @@ while IFS= read -r -d '' key && IFS= read -r value; do
     echo "[info] env: ${key}=${value}"
 done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.json)
 
-# Map the HA options quality label to the numeric deemix bitrate
-bitrate_from_label() {
-    case "${1}" in
-        "MP3 128 kbps")  echo "1" ;;
-        "MP3 320 kbps")  echo "3" ;;
-        "FLAC lossless") echo "9" ;;
-        *) echo "" ;;
-    esac
-}
-
 # --- Apply PUID/PGID to user abc (default 1000:1000) ---
 if [ -n "${PUID}" ] && [ -n "${PGID}" ]; then
     echo "[info] PUID=${PUID}, PGID=${PGID} from env_vars"
@@ -104,32 +94,17 @@ set_env "DEEMIX_SERVER_PORT" "${SERVER_PORT}"
 set_env "DEEMIX_URL" "http://localhost:${SERVER_PORT}"
 CONFIG_JSON="/config/config.json"
 if [ ! -f "${CONFIG_JSON}" ]; then
-    BITRATE_FROM_OPTIONS=$(bitrate_from_label "$(jq -r '.deemix_bitrate // "FLAC lossless"' /data/options.json)")
-    if [ -n "${BITRATE_FROM_OPTIONS}" ] && [[ "${BITRATE_FROM_OPTIONS}" =~ ^[0-9]+$ ]]; then
-        echo "{\"maxBitrate\": ${BITRATE_FROM_OPTIONS}}" > "${CONFIG_JSON}"
-        echo "[info] Created config.json with maxBitrate=${BITRATE_FROM_OPTIONS}"
-    fi
+    echo "{\"maxBitrate\": 9}" > "${CONFIG_JSON}"
+    echo "[info] Created config.json with maxBitrate=9 (FLAC default)"
 fi
 
-# Synchronization of the Bitrate option from HA settings on every startup
-BITRATE_FROM_OPTIONS=$(bitrate_from_label "$(jq -r '.deemix_bitrate // "FLAC lossless"' /data/options.json)")
-if [ -n "${BITRATE_FROM_OPTIONS}" ] && [[ "${BITRATE_FROM_OPTIONS}" =~ ^[0-9]+$ ]]; then
-    if [ -f "${CONFIG_JSON}" ]; then
-        CURRENT_BITRATE=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null)
-        if [ "${CURRENT_BITRATE}" != "${BITRATE_FROM_OPTIONS}" ]; then
-            echo "[info] Syncing maxBitrate to ${BITRATE_FROM_OPTIONS} (from HA options)"
-            jq --arg bitrate "${BITRATE_FROM_OPTIONS}" '.maxBitrate = ($bitrate | tonumber)' "${CONFIG_JSON}" > "${CONFIG_JSON}.tmp" && mv "${CONFIG_JSON}.tmp" "${CONFIG_JSON}"
-        fi
-    fi
-fi
-
-# Setting the DEEMIX_BITRATE environment variable from config.json (or options.json)
+# Setting the DEEMIX_BITRATE environment variable from config.json
 BITRATE_FOR_ENV=""
 if [ -f "${CONFIG_JSON}" ]; then
     BITRATE_FOR_ENV=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null)
 fi
 if [ -z "${BITRATE_FOR_ENV}" ] || [ "${BITRATE_FOR_ENV}" = "null" ]; then
-    BITRATE_FOR_ENV=$(bitrate_from_label "$(jq -r '.deemix_bitrate // "FLAC lossless"' /data/options.json)")
+    BITRATE_FOR_ENV="9"
 fi
 set_env "DEEMIX_BITRATE" "${BITRATE_FOR_ENV}"
 

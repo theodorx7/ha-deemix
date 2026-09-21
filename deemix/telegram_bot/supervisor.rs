@@ -1,7 +1,6 @@
 //! Home Assistant Supervisor API helpers.
 //!
-//! Used to sync bot runtime changes (bitrate, ARL) back into the add-on
-//! options and to restart the add-on from inside the bot.
+//! Used to sync bot runtime changes (ARL) back into the add-on options.
 
 use std::env;
 
@@ -58,14 +57,3 @@ pub(crate) async fn update_ha_option(key: &str, value: serde_json::Value) -> Res
     Ok(())
 }
 
-/// Restart the add-on via the Supervisor API
-pub(crate) async fn restart_addon() -> Result<(), String> {
-    let info = supervisor_request("GET", "/addons/self/info", None).await?;
-    let slug = info["data"]["slug"].as_str()
-        .ok_or_else(|| "Failed to get addon slug".to_string())?;
-    
-    supervisor_request("POST", &format!("/addons/{}/restart", slug), None).await?;
-    
-    log::info!("[ha-sync] Add-on restart initiated");
-    Ok(())
-}

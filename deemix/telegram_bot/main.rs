@@ -332,6 +332,8 @@ async fn handle_quality_change(
         *br
     };
 
+    let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
+    let kb = settings_keyboard(&updated, &state.config, new_bitrate);
     bot.send_message(
         msg.chat.id,
         format!(

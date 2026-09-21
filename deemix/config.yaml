@@ -38,9 +38,7 @@ options:
   openai_api_key: ""
   whisper_url: ""
 schema:
-  env_vars:
-    - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
-      value: "str"
+  env_vars: []
   telegram_enabled: bool
   telegram_token: "str?"
   deemix_arl: "str?"

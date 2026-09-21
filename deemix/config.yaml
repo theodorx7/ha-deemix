@@ -24,7 +24,7 @@ webui: "http://[HOST]:[PORT:6595]"
 
 options:
   env_vars: []
-  telegram_enabled: true
+  telegram_enabled: false
   telegram_token: ""
   whitelist_enabled: true
   whitelist_ids: ""

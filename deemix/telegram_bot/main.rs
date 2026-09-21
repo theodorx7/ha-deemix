@@ -12,7 +12,6 @@ use teloxide::{
 mod config;
 mod spotify;
 mod keyboards;
-mod supervisor;
 mod streaming;
 mod deemix;
 mod users;
@@ -41,7 +40,6 @@ lazy_static::lazy_static! {
 // ── Main ──────────────────────────────────────────────────────────────────────
 #[tokio::main]
 async fn main() {
-    dotenvy::dotenv().ok();
     pretty_env_logger::init();
 
     let config = Config::from_env();
@@ -386,7 +384,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
         }
         "🎤 Voice search" => {
             if !state.config.whisper_enabled() || !user_settings.voice_search {
-                bot.send_message(msg.chat.id, "⚠️ Voice search is not configured. Add OPENAI_API_KEY or WHISPER_URL to your .env, or enable it in /settings.").await?;
+                bot.send_message(msg.chat.id, "⚠️ Voice search is not configured. Add OPENAI_API_KEY or WHISPER_URL in the add-on options, or enable it in /settings.").await?;
             } else {
                 dialogue.update(State::AwaitingVoiceTranscribe).await.ok();
                 bot.send_message(msg.chat.id, "🎤 Send me a voice note and I'll transcribe what you said and search for it.
@@ -408,7 +406,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
         }
         "🎵 Recognize song" => {
             if !state.config.audd_enabled() || !user_settings.song_recognition {
-                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add AUDD_API_KEY to your .env, or enable it in /settings.").await?;
+                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add AUDD_API_KEY in the add-on options, or enable it in /settings.").await?;
             } else {
                 dialogue.update(State::AwaitingVoiceRecognize).await.ok();
                 bot.send_message(msg.chat.id, "🎵 Send me a voice recording of a song and I'll identify it.
@@ -507,7 +505,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
         }
         t if t.starts_with("🎤 Voice search:") => {
             if !state.config.whisper_enabled() {
-                bot.send_message(msg.chat.id, "⚠️ Voice search is not configured. Add OPENAI_API_KEY to your .env to enable it.").await?;
+                bot.send_message(msg.chat.id, "⚠️ Voice search is not configured. Add OPENAI_API_KEY in the add-on options to enable it.").await?;
                 return Ok(());
             }
             users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
@@ -530,7 +528,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
         }
         t if t.starts_with("🎵 Song recognition:") => {
             if !state.config.audd_enabled() {
-                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add AUDD_API_KEY to your .env to enable it.").await?;
+                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add AUDD_API_KEY in the add-on options to enable it.").await?;
                 return Ok(());
             }
             users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
@@ -692,18 +690,6 @@ async fn handle_updatearl(bot: &Bot, msg: &Message, state: &Arc<BotState>, arl: 
     match deemix::login_arl(state, arl).await {
         Ok(_username) => {
             *state.current_arl.lock().await = arl.to_string();
-            std::env::set_var("DEEMIX_ARL", arl);
-            
-            // Synchronization with HA via the Supervisor API
-            match supervisor::update_ha_option("deemix_arl", serde_json::json!(arl)).await {
-                Ok(_) => {
-                    log::info!("[ha-sync] ARL synced to HA options");
-                }
-                Err(e) => {
-                    log::warn!("[ha-sync] Failed to sync ARL to HA: {}", e);
-                }
-            }
-            
             bot.edit_message_text(msg.chat.id, sent.id, "✅ ARL updated and logged in! Downloads will use the new ARL immediately.").await?;
         }
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ ARL rejected by deemix: {}", e)).await?; }

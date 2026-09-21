@@ -1,5 +1,5 @@
 use std::env;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use regex::Regex;
 use reqwest::Client;
@@ -28,19 +28,17 @@ use streaming::{
 };
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
-lazy_static::lazy_static! {
-    static ref DEEZER_URL_RE: Regex = Regex::new(
-        r"https?://(?:www\.)?deezer\.com/(?:[a-z]+/)?(track|album|playlist|artist)/(\d+)"
-    ).unwrap();
-    static ref DEEZER_SHORT_RE: Regex = Regex::new(
-        r"https?://link\.deezer\.com/s/\S+"
-    ).unwrap();
-}
+static DEEZER_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"https?://(?:www\.)?deezer\.com/(?:[a-z]+/)?(track|album|playlist|artist)/(\d+)"
+).unwrap());
+static DEEZER_SHORT_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"https?://link\.deezer\.com/s/\S+"
+).unwrap());
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 #[tokio::main]
 async fn main() {
-    pretty_env_logger::init();
+    env_logger::init();
 
     let config = Config::from_env();
     if config.is_whitelist_empty() {

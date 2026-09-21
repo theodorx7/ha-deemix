@@ -1,7 +1,7 @@
 //! Core configuration, shared state and dialogue types for the telegram bot.
 //!
 //! - `Config`: per-run static configuration assembled from /config files
-//!   and ENV variables (fallback chain, see DOCS §3.2).
+//!   and ENV variables.
 //! - `BotState`: shared runtime state (users db, pending voices, bitrate, ARL).
 //! - `State` / `MyDialogue`: teloxide dialogue machine types.
 //! - `Command`: bot command enum used by dptree dispatching.
@@ -58,7 +58,6 @@ impl Config {
                 .ok()
                 .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
                 .and_then(|v| v["arl"].as_str().map(|s| s.to_string()))
-                .or_else(|| env::var("DEEMIX_ARL").ok())
                 .unwrap_or_default(),
             users_file: env::var("USERS_FILE")
                 .unwrap_or_else(|_| "/config/telegram_bot/users.json".to_string()),

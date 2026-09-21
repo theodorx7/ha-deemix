@@ -66,15 +66,8 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
     set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
     set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"
     
-    # Предупреждение о пустом белом списке (как в upstream) - позже удалить, когда телеграм бот будет логировать напрямую в аддон
-    if [ "$(jq -r '.whitelist_enabled // false' /data/options.json)" = "true" ] && \
-       [ -z "$(jq -r '.whitelist_ids // ""' /data/options.json)" ]; then
-        echo "[warn] Whitelist is enabled but WHITELIST_IDS is empty. All users will be blocked until configured."
-    fi
-    
     # Internal settings for running in the same container as Deemix
     set_env "DEEMIX_SINGLE_USER" "true"
-    set_env "USERS_FILE" "/config/telegram_bot/users.json"
     set_env "RUST_LOG" "info"
 
     echo "[info] Telegram bot enabled"
@@ -86,6 +79,5 @@ fi
 SERVER_PORT=$(jq -r '.server_port // 6595' /data/options.json)
 set_env "DEEMIX_SERVER_PORT" "${SERVER_PORT}"
 set_env "DEEMIX_URL" "http://localhost:${SERVER_PORT}"
-
 
 echo "[info] Home Assistant options applied"

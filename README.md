@@ -4,7 +4,7 @@
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
 
-# Home Assistant Appn: Deemix with telegram bot
+# Home Assistant App: Deemix with telegram bot
 
 > ⚠️ **WIP: IN DEVELOPMENT**
 > Subscribe to updates (**Watch -> Releases**) and wait for the first release.

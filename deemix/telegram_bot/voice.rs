@@ -13,8 +13,7 @@ use regex::Regex;
 use std::sync::Arc;
 
 use teloxide::prelude::*;
-use teloxide::types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup};
-use teloxide::types::FileId;
+use teloxide::types::{CallbackQuery, FileId, InlineKeyboardButton, InlineKeyboardMarkup};
 
 use crate::{BotState, MyDialogue, build_search_results, deemix, spotify, user_id_from_msg, users};
 

@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use teloxide::prelude::*;
 use teloxide::types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup};
+use teloxide::types::FileId;
 
 use crate::{BotState, MyDialogue, build_search_results, deemix, spotify, user_id_from_msg, users};
 
@@ -317,31 +318,31 @@ pub(crate) async fn handle_voice_callback(
             let file_id = match file_id {
                 Some(f) => f,
                 None => {
-                    bot.edit_message_text(msg.chat.id, msg.id, "❌ Voice note expired. Please send it again.").await?;
+                    bot.edit_message_text(msg.chat().id, msg.id(), "❌ Voice note expired. Please send it again.").await?;
                     return Ok(());
                 }
             };
 
-            bot.edit_message_text(msg.chat.id, msg.id, "⏳ Processing voice note...").await?;
+            bot.edit_message_text(msg.chat().id, msg.id(), "⏳ Processing voice note...").await?;
 
             // Download audio from Telegram
-            let file = bot.get_file(&file_id).await
+            let file = bot.get_file(FileId(file_id.clone())).await
                 .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
             let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
             let audio_bytes = match state.http.get(&url).send().await {
                 Ok(r) => match r.bytes().await {
                     Ok(b) => b.to_vec(),
-                    Err(e) => { bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Failed to read audio: {}", e)).await?; return Ok(()); }
+                    Err(e) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed to read audio: {}", e)).await?; return Ok(()); }
                 },
-                Err(e) => { bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Failed to download audio: {}", e)).await?; return Ok(()); }
+                Err(e) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed to download audio: {}", e)).await?; return Ok(()); }
             };
 
             match action {
                 "transcribe" => {
-                    process_voice_transcribe(&bot, msg.chat.id, msg.id, audio_bytes, &state).await?;
+                    process_voice_transcribe(&bot, msg.chat().id, msg.id(), audio_bytes, &state).await?;
                 }
                 "recognize" => {
-                    process_voice_recognize(&bot, msg.chat.id, msg.id, audio_bytes, &state).await?;
+                    process_voice_recognize(&bot, msg.chat().id, msg.id(), audio_bytes, &state).await?;
                 }
                 _ => {}
             }
@@ -540,7 +541,7 @@ pub(crate) async fn receive_voice_transcribe(bot: Bot, msg: Message, state: Arc<
     };
     let sent = bot.send_message(msg.chat.id, "🎤 Transcribing...").await?;
     // Download audio from Telegram
-    let file = bot.get_file(&voice.file.id).await
+    let file = bot.get_file(voice.file.id).await
         .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
     let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
     let audio_bytes = match state.http.get(&url).send().await {
@@ -561,7 +562,7 @@ pub(crate) async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<B
     };
     let sent = bot.send_message(msg.chat.id, "🎵 Recognizing song...").await?;
     // Download audio from Telegram
-    let file = bot.get_file(&voice.file.id).await
+    let file = bot.get_file(voice.file.id).await
         .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
     let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
     let audio_bytes = match state.http.get(&url).send().await {

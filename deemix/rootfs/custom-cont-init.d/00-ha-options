@@ -40,25 +40,6 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
     set_env "TELEGRAM_ENABLED" "${TELEGRAM_ENABLED}"
 
     set_env "TELEGRAM_TOKEN" "$(jq -r '.telegram_token // ""' /data/options.json)"
-    # Initializing login.json on first launch
-    LOGIN_FILE="/config/login.json"
-    if [ ! -f "${LOGIN_FILE}" ]; then
-        ARL_FROM_OPTIONS=$(jq -r '.deemix_arl // ""' /data/options.json)
-        if [ -n "${ARL_FROM_OPTIONS}" ]; then
-            echo "{\"arl\": \"${ARL_FROM_OPTIONS}\"}" > "${LOGIN_FILE}"
-            echo "[info] Initialized login.json with ARL from options"
-        fi
-    fi
-    
-    # Setting ENV from login.json (or from options.json if the file is empty)
-    ARL_FOR_ENV=""
-    if [ -f "${LOGIN_FILE}" ]; then
-        ARL_FOR_ENV=$(jq -r '.arl // empty' "${LOGIN_FILE}" 2>/dev/null || echo "")
-    fi
-    if [ -z "${ARL_FOR_ENV}" ] || [ "${ARL_FOR_ENV}" = "null" ]; then
-        ARL_FOR_ENV=$(jq -r '.deemix_arl // ""' /data/options.json)
-    fi
-    set_env "DEEMIX_ARL" "${ARL_FOR_ENV}"
     set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
     set_env "WHITELIST_ENABLED" "$(jq -r '.whitelist_enabled // false' /data/options.json)"
     set_env "WHITELIST_IDS" "$(jq -r '.whitelist_ids // ""' /data/options.json)"

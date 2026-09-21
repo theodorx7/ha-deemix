@@ -25,9 +25,7 @@ ports_description:
 webui: "http://[HOST]:[PORT:6595]"
 
 options:
-  env_vars:
-    - name: ""
-      value: ""
+env_vars: []
   telegram_enabled: true
   telegram_token: ""
   deemix_bitrate_lock: false
@@ -37,7 +35,9 @@ options:
   openai_api_key: ""
   whisper_url: ""
 schema:
-  env_vars: []
+  env_vars:
+    - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
+      value: "str?"
   telegram_enabled: bool
   telegram_token: "str?"
   deemix_bitrate_lock: bool

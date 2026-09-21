@@ -69,7 +69,7 @@ async fn main() {
         .branch(
             Update::filter_message()
             .filter(|msg: Message, state: Arc<BotState>| {
-                let user_id = msg.from().map(|u| u.id.0 as i64).unwrap_or(0);
+                llet user_id = msg.from.as_ref().map(|u| u.id.0 as i64).unwrap_or(0);
                 !state.config.is_user_allowed(user_id)
             })
             .endpoint(handle_unauthorized_message),
@@ -116,7 +116,7 @@ async fn main() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 pub(crate) fn user_id_from_msg(msg: &Message) -> i64 {
-    msg.from().map(|u| u.id.0 as i64).unwrap_or(0)
+    msg.from.as_ref().map(|u| u.id.0 as i64).unwrap_or(0)
 }
 
 // ── Unauthorized Handlers ────────────────────────────────────────────────────

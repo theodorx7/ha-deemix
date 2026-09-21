@@ -12,7 +12,6 @@ configuration:
         description: >-
           Environment variable value (e.g. /media/downloads/ for
           DEEMIX_MUSIC_DIR, 1000 for PUID).
-
   telegram_enabled:
     name: Enable Telegram Bot
     description: >-
@@ -23,16 +22,6 @@ configuration:
     description: >-
       Bot token obtained from @BotFather in Telegram.
       Required if Telegram Bot is enabled.
-  deemix_arl:
-    name: Deezer ARL
-    description: >-
-      Deezer ARL token for authentication.
-      Get it from your browser cookies on deezer.com.
-  deemix_bitrate_lock:
-    name: Lock Quality
-    description: >-
-      Prevent users from changing the download quality
-      via the Telegram bot /settings command.
   whitelist_enabled:
     name: "Access Control"
     description: >-
@@ -44,6 +33,10 @@ configuration:
       Get your ID via @userinfobot on Telegram.
       Spaces around IDs are trimmed automatically. Invalid IDs are ignored.
       Example: 123456789,987654321
-
+  deemix_bitrate_lock:
+    name: Lock Quality
+    description: >-
+      Prevent users from changing the download quality
+      via the Telegram bot /settings command.
 network:
   6595/tcp: "Deemix WebIU"

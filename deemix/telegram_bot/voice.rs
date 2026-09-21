@@ -540,7 +540,7 @@ pub(crate) async fn receive_voice_transcribe(bot: Bot, msg: Message, state: Arc<
     };
     let sent = bot.send_message(msg.chat.id, "🎤 Transcribing...").await?;
     // Download audio from Telegram
-    let file = bot.get_file(voice.file.id).await
+    let file = bot.get_file(voice.file.id.clone()).await
         .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
     let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
     let audio_bytes = match state.http.get(&url).send().await {
@@ -561,7 +561,7 @@ pub(crate) async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<B
     };
     let sent = bot.send_message(msg.chat.id, "🎵 Recognizing song...").await?;
     // Download audio from Telegram
-    let file = bot.get_file(voice.file.id).await
+    let file = bot.get_file(voice.file.id.clone()).await
         .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
     let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
     let audio_bytes = match state.http.get(&url).send().await {

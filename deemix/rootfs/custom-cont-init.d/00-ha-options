@@ -60,12 +60,11 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
     fi
     set_env "DEEMIX_ARL" "${ARL_FOR_ENV}"
     set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
-    
+    set_env "WHITELIST_ENABLED" "$(jq -r '.whitelist_enabled // false' /data/options.json)"
+    set_env "WHITELIST_IDS" "$(jq -r '.whitelist_ids // ""' /data/options.json)"
     set_env "AUDD_API_KEY" "$(jq -r '.audd_api_key // ""' /data/options.json)"
     set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
     set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"
-    set_env "WHITELIST_ENABLED" "$(jq -r '.whitelist_enabled // false' /data/options.json)"
-    set_env "WHITELIST_IDS" "$(jq -r '.whitelist_ids // ""' /data/options.json)"
     
     # Предупреждение о пустом белом списке (как в upstream) - позже удалить, когда телеграм бот будет логировать напрямую в аддон
     if [ "$(jq -r '.whitelist_enabled // false' /data/options.json)" = "true" ] && \

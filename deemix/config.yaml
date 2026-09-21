@@ -10,8 +10,6 @@ arch:
   - aarch64
   - amd64
 init: false
-hassio_api: true
-hassio_role: manager
 startup: application
 boot: auto
 map:

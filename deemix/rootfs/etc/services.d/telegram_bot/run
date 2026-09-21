@@ -27,7 +27,6 @@ if [[ "${TELEGRAM_ENABLED}" == "true" ]]; then
 
     # Log configuration (without exposing secrets)
     echo "[info] DEEMIX_URL: ${DEEMIX_URL}"
-    echo "[info] DEEMIX_BITRATE: ${DEEMIX_BITRATE}"
     echo "[info] DEEMIX_BITRATE_LOCK: ${DEEMIX_BITRATE_LOCK}"
 
     # Run Telegram Bot

@@ -26,9 +26,9 @@ options:
   env_vars: []
   telegram_enabled: true
   telegram_token: ""
-  deemix_bitrate_lock: false
   whitelist_enabled: true
   whitelist_ids: ""
+  deemix_bitrate_lock: false
   audd_api_key: ""
   openai_api_key: ""
   whisper_url: ""
@@ -38,9 +38,9 @@ schema:
       value: "str"
   telegram_enabled: bool
   telegram_token: "str?"
-  deemix_bitrate_lock: bool
   whitelist_enabled: bool
   whitelist_ids: "str?"
+  deemix_bitrate_lock: bool
   audd_api_key: "str?"
   openai_api_key: "str?"
   whisper_url: "str?"

@@ -60,5 +60,6 @@ fi
 SERVER_PORT=$(jq -r '.server_port // 6595' /data/options.json)
 set_env "DEEMIX_SERVER_PORT" "${SERVER_PORT}"
 set_env "DEEMIX_URL" "http://localhost:${SERVER_PORT}"
+set_env "DEEMIX_DATA_DIR" "/config"
 
 echo "[info] Home Assistant options applied"

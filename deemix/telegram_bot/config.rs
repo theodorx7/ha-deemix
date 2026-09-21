@@ -65,21 +65,7 @@ impl Config {
             audd_api_key: env::var("AUDD_API_KEY").unwrap_or_default(),
             openai_api_key: env::var("OPENAI_API_KEY").unwrap_or_default(),
             whisper_url: env::var("WHISPER_URL").unwrap_or_default(),
-            deemix_bitrate: std::fs::read_to_string("/config/config.json")
-                .ok()
-                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-                .and_then(|v| {
-                    v["maxBitrate"].as_u64()
-                        .or_else(|| v["maxBitrate"].as_str().and_then(|s| s.parse::<u64>().ok()))
-                        .map(|n| n as u8)
-                })
-                .or_else(|| {
-                    env::var("DEEMIX_BITRATE")
-                        .unwrap_or_else(|_| "9".to_string())
-                        .parse()
-                        .ok()
-                })
-                .unwrap_or(9),
+            deemix_bitrate: 9, // bot always starts at FLAC default
             deemix_bitrate_lock: env::var("DEEMIX_BITRATE_LOCK").unwrap_or_else(|_| "false".to_string()).to_lowercase() == "true",
             whitelist_enabled: env::var("WHITELIST_ENABLED").unwrap_or_else(|_| "true".to_string()).to_lowercase() == "true",
             whitelist_ids: env::var("WHITELIST_IDS").unwrap_or_default()

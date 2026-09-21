@@ -43,7 +43,7 @@ pub(crate) fn settings_keyboard(s: &UserSettings, config: &Config, bitrate: u8) 
         vec![KeyboardButton::new("🔑 Update ARL")],
         vec![KeyboardButton::new("🔙 Back to menu")],
     ])
-    .resize_keyboard(true)
+    .resize_keyboard()
 }
 
 pub(crate) fn arl_cancel_keyboard() -> InlineKeyboardMarkup {
@@ -82,5 +82,5 @@ pub(crate) fn main_keyboard(s: &UserSettings, config: &Config) -> KeyboardMarkup
         KeyboardButton::new("ℹ️ Help"),
     ]);
 
-    KeyboardMarkup::new(rows).resize_keyboard(true)
+    KeyboardMarkup::new(rows).resize_keyboard()
 }

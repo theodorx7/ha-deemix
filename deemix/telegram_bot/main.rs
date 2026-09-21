@@ -140,7 +140,7 @@ async fn handle_unauthorized_callback(
     state: Arc<BotState>,
 ) -> ResponseResult<()> {
     if state.config.is_whitelist_empty() {
-        bot.answer_callback_query(&query.id)
+        bot.answer_callback_query(query.id.clone())
             .text("⚠️ The user list is empty.\nAdd users to the whitelist or disable the user filtering feature.")
             .await?;
     }
@@ -580,7 +580,7 @@ async fn handle_callback(
     state: Arc<BotState>,
     storage: Arc<InMemStorage<State>>,
 ) -> ResponseResult<()> {
-    bot.answer_callback_query(&q.id).await?;
+    bot.answer_callback_query(q.id.clone()).await?;
 
     let data = match &q.data {
         Some(d) => d.clone(),
@@ -589,16 +589,16 @@ async fn handle_callback(
 
     if data == "cancel" {
         if let Some(msg) = &q.message {
-            bot.edit_message_text(msg.chat.id, msg.id, "Cancelled.").await?;
+            bot.edit_message_text(msg.chat().id, msg.id(), "Cancelled.").await?;
         }
         return Ok(());
     }
 
     if data == "cancel_arl" {
         if let Some(msg) = &q.message {
-            let dialogue: MyDialogue = Dialogue::new(storage, msg.chat.id);
+            let dialogue: MyDialogue = Dialogue::new(storage, msg.chat().id);
             dialogue.exit().await.ok();
-            bot.edit_message_text(msg.chat.id, msg.id, "❌ ARL update cancelled.").await?;
+            bot.edit_message_text(msg.chat().id, msg.id(), "❌ ARL update cancelled.").await?;
         }
         return Ok(());
     }
@@ -609,10 +609,10 @@ async fn handle_callback(
                 .and_then(|c| c.get(1))
                 .map(|m| capitalize(m.as_str()))
                 .unwrap_or_else(|| "Item".to_string());
-            bot.edit_message_text(msg.chat.id, msg.id, format!("⏳ Queuing {}...", kind.to_lowercase())).await?;
+            bot.edit_message_text(msg.chat().id, msg.id(), format!("⏳ Queuing {}...", kind.to_lowercase())).await?;
             match deemix::add_to_queue(&state, url).await {
-                Ok(_) => { bot.edit_message_text(msg.chat.id, msg.id, format!("✅ {} added to queue!", kind)).await?; }
-                Err(e) => { bot.edit_message_text(msg.chat.id, msg.id, format!("❌ Failed: {}", e)).await?; }
+                Ok(_) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("✅ {} added to queue!", kind)).await?; }
+                Err(e) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed: {}", e)).await?; }
             }
         }
     }

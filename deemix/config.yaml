@@ -31,7 +31,6 @@ options:
   telegram_enabled: true
   telegram_token: ""
   deemix_arl: ""
-  deemix_bitrate: "FLAC lossless"
   deemix_bitrate_lock: false
   whitelist_enabled: true
   whitelist_ids: ""
@@ -45,7 +44,6 @@ schema:
   telegram_enabled: bool
   telegram_token: "str?"
   deemix_arl: "str?"
-  deemix_bitrate: "list(MP3 128 kbps|MP3 320 kbps|FLAC lossless)"
   deemix_bitrate_lock: bool
   whitelist_enabled: bool
   whitelist_ids: "str?"

@@ -26,8 +26,8 @@ webui: "http://[HOST]:[PORT:6595]"
 
 options:
   env_vars:
-    - name: DEEMIX_MUSIC_DIR
-      value: /media/MUSIC/! downloads/
+    - name: ""
+      value: ""
   telegram_enabled: true
   telegram_token: ""
   deemix_arl: ""

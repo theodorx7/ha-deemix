@@ -83,28 +83,10 @@ else
     echo "[info] Telegram bot disabled"
 fi
 
-# --- Initialization config.json for Deemix ---
+# --- Deemix server settings ---
 SERVER_PORT=$(jq -r '.server_port // 6595' /data/options.json)
 set_env "DEEMIX_SERVER_PORT" "${SERVER_PORT}"
 set_env "DEEMIX_URL" "http://localhost:${SERVER_PORT}"
-CONFIG_JSON="/config/config.json"
-if [ ! -f "${CONFIG_JSON}" ]; then
-    echo "{}" > "${CONFIG_JSON}"
-    echo "[info] Created config.json"
-fi
 
-# Seed DEEMIX_MUSIC_DIR into config.json only when downloadLocation is not yet set
-# (first launch). Afterwards the location is managed in the deemix web UI.
-if [ -n "${DEEMIX_MUSIC_DIR:-}" ]; then
-    CONFIG_FILE="/config/config.json"
-    DESIRED="${DEEMIX_MUSIC_DIR%/}/"
-    if [ -f "$CONFIG_FILE" ]; then
-        CURRENT=$(jq -r '.downloadLocation // empty' "$CONFIG_FILE" 2>/dev/null || echo "")
-        if [ -z "${CURRENT}" ]; then
-            echo "[info] Seeding downloadLocation to ${DESIRED} (first launch)"
-            jq --arg loc "$DESIRED" '.downloadLocation = $loc' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" 2>/dev/null && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE" || rm -f "${CONFIG_FILE}.tmp"
-        fi
-    fi
-fi
 
 echo "[info] Home Assistant options applied"

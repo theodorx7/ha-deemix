@@ -3,11 +3,6 @@ set -e
 
 echo "[info] Applying Home Assistant options"
 
-if [ ! -f /data/options.json ]; then
-    echo "[error] Missing /data/options.json — is this app run by the Supervisor?"
-    exit 1
-fi
-
 # Publish an environment variable to all S6 services (read via with-contenv)
 set_env() {
     printf '%s' "${2}" > "/run/s6/container_environment/${1}"
@@ -94,19 +89,9 @@ set_env "DEEMIX_SERVER_PORT" "${SERVER_PORT}"
 set_env "DEEMIX_URL" "http://localhost:${SERVER_PORT}"
 CONFIG_JSON="/config/config.json"
 if [ ! -f "${CONFIG_JSON}" ]; then
-    echo "{\"maxBitrate\": 9}" > "${CONFIG_JSON}"
-    echo "[info] Created config.json with maxBitrate=9 (FLAC default)"
+    echo "{}" > "${CONFIG_JSON}"
+    echo "[info] Created config.json"
 fi
-
-# Setting the DEEMIX_BITRATE environment variable from config.json
-BITRATE_FOR_ENV=""
-if [ -f "${CONFIG_JSON}" ]; then
-    BITRATE_FOR_ENV=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null || echo "")
-fi
-if [ -z "${BITRATE_FOR_ENV}" ] || [ "${BITRATE_FOR_ENV}" = "null" ]; then
-    BITRATE_FOR_ENV="9"
-fi
-set_env "DEEMIX_BITRATE" "${BITRATE_FOR_ENV}"
 
 # Sync DEEMIX_MUSIC_DIR to config.json (env_vars takes precedence)
 if [ -n "${DEEMIX_MUSIC_DIR:-}" ]; then

@@ -44,44 +44,44 @@ TELEGRAM_ENABLED=$(jq -r '.telegram_enabled // "false"' /data/options.json 2>/de
 if [ "${TELEGRAM_ENABLED}" = "true" ]; then
     set_env "TELEGRAM_ENABLED" "${TELEGRAM_ENABLED}"
 
-        set_env "TELEGRAM_TOKEN" "$(jq -r '.telegram_token // ""' /data/options.json)"
-        # Initializing login.json on first launch
-        LOGIN_FILE="/config/login.json"
-        if [ ! -f "${LOGIN_FILE}" ]; then
-            ARL_FROM_OPTIONS=$(jq -r '.deemix_arl // ""' /data/options.json)
-            if [ -n "${ARL_FROM_OPTIONS}" ]; then
-                echo "{\"arl\": \"${ARL_FROM_OPTIONS}\"}" > "${LOGIN_FILE}"
-                echo "[info] Initialized login.json with ARL from options"
-            fi
+    set_env "TELEGRAM_TOKEN" "$(jq -r '.telegram_token // ""' /data/options.json)"
+    # Initializing login.json on first launch
+    LOGIN_FILE="/config/login.json"
+    if [ ! -f "${LOGIN_FILE}" ]; then
+        ARL_FROM_OPTIONS=$(jq -r '.deemix_arl // ""' /data/options.json)
+        if [ -n "${ARL_FROM_OPTIONS}" ]; then
+            echo "{\"arl\": \"${ARL_FROM_OPTIONS}\"}" > "${LOGIN_FILE}"
+            echo "[info] Initialized login.json with ARL from options"
         fi
-        
-        # Setting ENV from login.json (or from options.json if the file is empty)
-        ARL_FOR_ENV=""
-        if [ -f "${LOGIN_FILE}" ]; then
-            ARL_FOR_ENV=$(jq -r '.arl // empty' "${LOGIN_FILE}" 2>/dev/null)
-        fi
-        if [ -z "${ARL_FOR_ENV}" ] || [ "${ARL_FOR_ENV}" = "null" ]; then
-            ARL_FOR_ENV=$(jq -r '.deemix_arl // ""' /data/options.json)
-        fi
-        set_env "DEEMIX_ARL" "${ARL_FOR_ENV}"
-        set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
-
-        set_env "AUDD_API_KEY" "$(jq -r '.audd_api_key // ""' /data/options.json)"
-        set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
-        set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"
-        set_env "WHITELIST_ENABLED" "$(jq -r '.whitelist_enabled // false' /data/options.json)"
-        set_env "WHITELIST_IDS" "$(jq -r '.whitelist_ids // ""' /data/options.json)"
-        
-        # Предупреждение о пустом белом списке (как в upstream) - позже удалить, когда телеграм бот будет логировать напрямую в аддон
-        if [ "$(jq -r '.whitelist_enabled // false' /data/options.json)" = "true" ] && \
-           [ -z "$(jq -r '.whitelist_ids // ""' /data/options.json)" ]; then
-            echo "[warn] Whitelist is enabled but WHITELIST_IDS is empty. All users will be blocked until configured."
-        fi
-
-        # Internal settings for running in the same container as Deemix
-        set_env "DEEMIX_SINGLE_USER" "true"
-        set_env "USERS_FILE" "/config/telegram_bot/users.json"
-        set_env "RUST_LOG" "info"
+    fi
+    
+    # Setting ENV from login.json (or from options.json if the file is empty)
+    ARL_FOR_ENV=""
+    if [ -f "${LOGIN_FILE}" ]; then
+        ARL_FOR_ENV=$(jq -r '.arl // empty' "${LOGIN_FILE}" 2>/dev/null || echo "")
+    fi
+    if [ -z "${ARL_FOR_ENV}" ] || [ "${ARL_FOR_ENV}" = "null" ]; then
+        ARL_FOR_ENV=$(jq -r '.deemix_arl // ""' /data/options.json)
+    fi
+    set_env "DEEMIX_ARL" "${ARL_FOR_ENV}"
+    set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
+    
+    set_env "AUDD_API_KEY" "$(jq -r '.audd_api_key // ""' /data/options.json)"
+    set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
+    set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"
+    set_env "WHITELIST_ENABLED" "$(jq -r '.whitelist_enabled // false' /data/options.json)"
+    set_env "WHITELIST_IDS" "$(jq -r '.whitelist_ids // ""' /data/options.json)"
+    
+    # Предупреждение о пустом белом списке (как в upstream) - позже удалить, когда телеграм бот будет логировать напрямую в аддон
+    if [ "$(jq -r '.whitelist_enabled // false' /data/options.json)" = "true" ] && \
+       [ -z "$(jq -r '.whitelist_ids // ""' /data/options.json)" ]; then
+        echo "[warn] Whitelist is enabled but WHITELIST_IDS is empty. All users will be blocked until configured."
+    fi
+    
+    # Internal settings for running in the same container as Deemix
+    set_env "DEEMIX_SINGLE_USER" "true"
+    set_env "USERS_FILE" "/config/telegram_bot/users.json"
+    set_env "RUST_LOG" "info"
 
     echo "[info] Telegram bot enabled"
 else
@@ -101,7 +101,7 @@ fi
 # Setting the DEEMIX_BITRATE environment variable from config.json
 BITRATE_FOR_ENV=""
 if [ -f "${CONFIG_JSON}" ]; then
-    BITRATE_FOR_ENV=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null)
+    BITRATE_FOR_ENV=$(jq -r '.maxBitrate // empty' "${CONFIG_JSON}" 2>/dev/null || echo "")
 fi
 if [ -z "${BITRATE_FOR_ENV}" ] || [ "${BITRATE_FOR_ENV}" = "null" ]; then
     BITRATE_FOR_ENV="9"
@@ -116,7 +116,7 @@ if [ -n "${DEEMIX_MUSIC_DIR:-}" ]; then
         CURRENT=$(jq -r '.downloadLocation // empty' "$CONFIG_FILE" 2>/dev/null || echo "")
         if [ "$CURRENT" != "$DESIRED" ]; then
             echo "[info] Syncing downloadLocation to ${DESIRED} (from env_vars)"
-            jq --arg loc "$DESIRED" '.downloadLocation = $loc' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+            jq --arg loc "$DESIRED" '.downloadLocation = $loc' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" 2>/dev/null && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE" || rm -f "${CONFIG_FILE}.tmp"
         fi
     fi
 fi

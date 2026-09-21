@@ -64,7 +64,10 @@ impl Config {
             audd_api_key: env::var("AUDD_API_KEY").unwrap_or_default(),
             openai_api_key: env::var("OPENAI_API_KEY").unwrap_or_default(),
             whisper_url: env::var("WHISPER_URL").unwrap_or_default(),
-            deemix_bitrate: 9, // bot always starts at FLAC default
+            deemix_bitrate: env::var("BOT_BITRATE")
+                .unwrap_or_else(|_| "9".to_string())
+                .parse()
+                .unwrap_or(9),
             deemix_bitrate_lock: env::var("DEEMIX_BITRATE_LOCK").unwrap_or_else(|_| "false".to_string()).to_lowercase() == "true",
             whitelist_enabled: env::var("WHITELIST_ENABLED").unwrap_or_else(|_| "true".to_string()).to_lowercase() == "true",
             whitelist_ids: env::var("WHITELIST_IDS").unwrap_or_default()

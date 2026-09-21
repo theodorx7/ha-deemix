@@ -25,16 +25,6 @@ pub(crate) fn next_bitrate(current: u8) -> u8 {
     match current { 9 => 3, 3 => 1, _ => 9 }
 }
 
-/// Quality label as shown in the HA add-on options UI
-/// (must match the select values in config.yaml exactly).
-pub(crate) fn bitrate_ha_label(bitrate: u8) -> &'static str {
-    match bitrate {
-        1 => "MP3 128 kbps",
-        3 => "MP3 320 kbps",
-        _ => "FLAC lossless", // 9 and any unexpected value
-    }
-}
-
 pub(crate) fn settings_keyboard(s: &UserSettings, config: &Config, bitrate: u8) -> KeyboardMarkup {
     let notif = if s.restart_notifications { "🔔 Restart notifications: ON" } else { "🔕 Restart notifications: OFF" };
     let voice = if s.voice_search && config.whisper_enabled() { "🎤 Voice search: ON" } else { "🎤 Voice search: OFF" };

@@ -6,7 +6,7 @@ use crate::BotState;
 
 pub async fn login(state: &Arc<BotState>) {
     if state.config.deemix_arl.is_empty() {
-        log::warn!("DEEMIX_ARL not set — bot may get NotLoggedIn errors.");
+        log::warn!("No ARL configured — login via the deemix web UI or /updatearl in Telegram.");
         return;
     }
     match login_arl(state, &state.config.deemix_arl.clone()).await {

@@ -3,7 +3,7 @@
 //! Converts a streaming URL to Deezer: single tracks via metadata search,
 //! playlists are scanned per-track, everything else goes through Odesli.
 
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use regex::Regex;
 
@@ -13,23 +13,21 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use crate::{BotState, build_search_results, capitalize, deemix, spotify, voice, youtube};
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
-lazy_static::lazy_static! {
-    pub(crate) static ref SPOTIFY_TRACK_RE: Regex = Regex::new(
-        r"https?://open\.spotify\.com/track/([A-Za-z0-9]+)"
-    ).unwrap();
-    pub(crate) static ref SPOTIFY_ALBUM_RE: Regex = Regex::new(
-        r"https?://open\.spotify\.com/album/([A-Za-z0-9]+)"
-    ).unwrap();
-    pub(crate) static ref SPOTIFY_PLAYLIST_RE: Regex = Regex::new(
-        r"https?://open\.spotify\.com/playlist/[A-Za-z0-9]+"
-    ).unwrap();
-    pub(crate) static ref YOUTUBE_RE: Regex = Regex::new(
-        r"https?://(?:(?:www\.)?youtube\.com/|youtu\.be/|music\.youtube\.com/)"
-    ).unwrap();
-    pub(crate) static ref APPLE_MUSIC_RE: Regex = Regex::new(
-        r"https?://music\.apple\.com/"
-    ).unwrap();
-}
+pub(crate) static SPOTIFY_TRACK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"https?://open\.spotify\.com/track/([A-Za-z0-9]+)"
+).unwrap());
+pub(crate) static SPOTIFY_ALBUM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"https?://open\.spotify\.com/album/([A-Za-z0-9]+)"
+).unwrap());
+pub(crate) static SPOTIFY_PLAYLIST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"https?://open\.spotify\.com/playlist/[A-Za-z0-9]+"
+).unwrap());
+pub(crate) static YOUTUBE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"https?://(?:(?:www\.)?youtube\.com/|youtu\.be/|music\.youtube\.com/)"
+).unwrap());
+pub(crate) static APPLE_MUSIC_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"https?://music\.apple\.com/"
+).unwrap());
 
 pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -> ResponseResult<()> {
     let sent = bot.send_message(msg.chat.id, "🎵 Looking up link...").await?;

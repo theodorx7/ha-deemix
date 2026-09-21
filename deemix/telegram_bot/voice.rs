@@ -132,9 +132,6 @@ pub async fn recognize(
         "AudD recognized: title={:?} artist={:?} deezer_url={:?} spotify_url={:?} song_link={:?}",
         title, artist, deezer_url, spotify_url, song_link
     );
-    log::info!("AudD raw result keys: {:?}", result.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-    log::info!("AudD deezer field: {}", result["deezer"]);
-    log::info!("AudD spotify field: {}", result["spotify"]);
 
     Ok(RecognitionResult { title, artist, deezer_url, spotify_url, song_link })
 }

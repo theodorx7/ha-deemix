@@ -5,23 +5,21 @@
 //! ~100 videos. Auto-generated mixes (list=RD...) have no playlist page
 //! and return None.
 
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 use regex::Regex;
 use reqwest::Client;
 use serde_json::Value;
 
 use crate::spotify::{Playlist, PlaylistTrack};
 
-lazy_static! {
-    static ref LIST_ID_RE: Regex = Regex::new(r"[?&]list=([A-Za-z0-9_-]+)").unwrap();
-    // Bracketed noise like (Official Video), [Lyrics], (HD), (Audio) etc.
-    static ref TITLE_NOISE_RE: Regex = Regex::new(
-        r"(?i)[(\[][^)\]]*(official|video|lyric|lyrics|audio|visuali[sz]er|hd|4k|remaster|m/v|mv|clip)[^)\]]*[)\]]"
-    ).unwrap();
-    static ref YT_INITIAL_DATA_RE: Regex = Regex::new(
-        r"(?s)var ytInitialData\s*=\s*(\{.*?\});\s*</script>"
-    ).unwrap();
-}
+static LIST_ID_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[?&]list=([A-Za-z0-9_-]+)").unwrap());
+// Bracketed noise like (Official Video), [Lyrics], (HD), (Audio) etc.
+static TITLE_NOISE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"(?i)[(\[][^)\]]*(official|video|lyric|lyrics|audio|visuali[sz]er|hd|4k|remaster|m/v|mv|clip)[^)\]]*[)\]]"
+).unwrap());
+static YT_INITIAL_DATA_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"(?s)var ytInitialData\s*=\s*(\{.*?\});\s*</script>"
+).unwrap());
 
 pub fn playlist_id(url: &str) -> Option<String> {
     LIST_ID_RE.captures(url).and_then(|c| c.get(1)).map(|m| m.as_str().to_string())

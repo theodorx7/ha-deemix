@@ -121,24 +121,15 @@ impl BotState {
 
 // ── Commands ──────────────────────────────────────────────────────────────────
 #[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase", description = "telegram_bot commands:")]
+#[command(rename_rule = "lowercase")]
 pub(crate) enum Command {
-    #[command(description = "Welcome message")]
     Start,
-    #[command(description = "Show all commands and info")]
     Help,
-    #[command(description = "Check deemix status")]
     Status,
-    #[command(description = "Search for a track")]
     Search,
-    #[command(description = "Search for an album")]
     Album,
-    #[command(description = "Clear completed downloads from queue")]
     Clearqueue,
-    #[command(description = "Show quick action buttons")]
     Menu,
-    #[command(description = "Show settings")]
     Settings,
-    #[command(description = "Update Deezer ARL")]
     Updatearl,
 }

@@ -518,8 +518,8 @@ I connect to your personal deemix server and queue music downloads. Just tell me
 
     // ── Link extraction ──
     // Pull the first link out of the message (an explicit http(s) URL or a
-    // bare supported-service domain) so the handlers below always receive a
-    // clean URL instead of the whole message text.
+    // bare web address carrying a path) so the handlers below always receive
+    // a clean URL instead of the whole message text.
     let Some(link) = extract_link(&text) else {
         // No link found — treat the whole message as a search query
         do_search(&bot, &msg, &state, &text, "track").await?;

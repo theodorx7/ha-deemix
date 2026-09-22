@@ -39,8 +39,12 @@ pub fn strip_playlist_params(url: &str) -> String {
 
 pub async fn resolve_playlist(http: &Client, url: &str) -> Option<Playlist> {
     let id = playlist_id(url)?;
-    // Mixes/radios are generated per-user and have no playlist page
-    if id.starts_with("RD") {
+    // Personal lists have no public playlist page: RD (auto mixes/radios),
+    // LM (liked music), LL (liked videos), WL (watch later), FL (favorites).
+    // Channel uploads (UU) are public and stay allowed.
+    if id.starts_with("RD") || id.starts_with("LM") || id.starts_with("LL")
+        || id.starts_with("WL") || id.starts_with("FL")
+    {
         return None;
     }
 

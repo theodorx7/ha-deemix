@@ -183,6 +183,12 @@ async fn queue_playlist(
     }
 
     let mut text = format!("✅ Playlist \"{}\": queued {}/{} tracks.", pl.name, queued, total);
+    // Both resolvers (Spotify embed page, YouTube ytInitialData) expose only
+    // the first ~100 tracks per playlist, so a count at that limit means the
+    // source playlist may have been truncated.
+    if total >= 100 {
+        text.push_str("\n\n⚠️ Note: the source platform only exposes the first ~100 tracks per playlist, so longer playlists may be scanned partially.");
+    }
     if !not_found.is_empty() {
         text.push_str("\n\n😕 Couldn't queue these:\n");
         for t in not_found.iter().take(15) {

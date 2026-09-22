@@ -10,6 +10,7 @@ use teloxide::{
 };
 
 mod config;
+mod apple;
 mod spotify;
 mod keyboards;
 mod streaming;
@@ -25,6 +26,7 @@ use streaming::{
     handle_streaming_link, SPOTIFY_ALBUM_RE,
     SPOTIFY_PLAYLIST_RE, SPOTIFY_TRACK_RE,
 };
+use apple::{APPLE_ALBUM_RE, APPLE_SONG_RE};
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
 // Two layers: extraction (pull a clean URL out of arbitrary message text)
@@ -172,7 +174,7 @@ async fn handle_command(
             let kb = main_keyboard(&user_settings, &state.config);
             bot.send_message(
                 msg.chat.id,
-                "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name or a link from Deezer, Spotify, YouTube, or Apple Music, and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
+                "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name or a link from Deezer, Spotify, or Apple Music, and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
             )
             .reply_markup(kb)
             .await?;
@@ -185,9 +187,9 @@ async fn handle_command(
 I connect to your personal deemix server and queue music downloads for you. Just tell me what you want!\n\n\
 📥 Ways to request music:\n\
 • Type any song or artist name → search and pick from results\n\
-• Send a Deezer link (track, album, playlist) → queued instantly\n\
-• Send a Spotify, YouTube, YouTube Music, or Apple Music link → found on Deezer and queued\n\
-• Send a Spotify or YouTube playlist link → every track is scanned and queued individually\n\
+• Send a Deezer link (track, album, playlist, artist) → queued instantly\n\
+• Send a Spotify or Apple Music link (track or album) → found on Deezer and queued\n\
+• Send a Spotify playlist link → every track is scanned and queued individually\n\
 • Send a voice note → transcribe what you said or recognize the song\n\n\
 🔧 All commands:\n\
 /menu — quick action buttons\n\
@@ -444,8 +446,8 @@ I connect to your personal deemix server and queue music downloads. Just tell me
 📥 Ways to request music:\n\
 • Type any song or artist name → search and pick\n\
 • Send a Deezer link → queued instantly\n\
-• Send a Spotify, YouTube, YouTube Music, or Apple Music link → found on Deezer and queued\n\
-• Send a Spotify or YouTube playlist link → every track is scanned and queued individually\n\
+• Send a Spotify or Apple Music link → found on Deezer and queued\n\
+• Send a Spotify playlist link → every track is scanned and queued individually\n\
 • Send a voice note → transcribe or recognize\n\n\
 🔧 Commands:\n\
 /menu — quick action buttons\n\
@@ -525,6 +527,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
     // ── Streaming service URLs ──
     if SPOTIFY_TRACK_RE.is_match(&link) || SPOTIFY_ALBUM_RE.is_match(&link)
         || SPOTIFY_PLAYLIST_RE.is_match(&link)
+        || APPLE_SONG_RE.is_match(&link) || APPLE_ALBUM_RE.is_match(&link)
     {
         handle_streaming_link(&bot, &msg, &state, &link).await?;
         return Ok(());

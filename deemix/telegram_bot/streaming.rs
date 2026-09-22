@@ -1,7 +1,7 @@
-//! Streaming-link handling: Spotify, YouTube, YouTube Music and Apple Music.
+//! Streaming-link handling: Spotify links.
 //!
-//! Converts a streaming URL to Deezer: single tracks via metadata search,
-//! playlists are scanned per-track, everything else goes through Odesli.
+//! Converts a streaming URL to Deezer: tracks and albums via metadata search,
+//! playlists are scanned per-track.
 
 use std::sync::{Arc, LazyLock};
 
@@ -10,7 +10,7 @@ use regex::Regex;
 use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
-use crate::{BotState, build_search_results, capitalize, deemix, spotify, voice, youtube};
+use crate::{BotState, build_search_results, deemix, spotify};
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
 pub(crate) static SPOTIFY_TRACK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
@@ -21,12 +21,6 @@ pub(crate) static SPOTIFY_ALBUM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::ne
 ).unwrap());
 pub(crate) static SPOTIFY_PLAYLIST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"(?i)https?://open\.spotify\.com/(?:intl-[a-z-]+/)?playlist/[A-Za-z0-9]+"
-).unwrap());
-pub(crate) static YOUTUBE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"(?i)https?://(?:(?:www\.|m\.|music\.)?youtube\.com/|youtu\.be/)"
-).unwrap());
-pub(crate) static APPLE_MUSIC_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"(?i)https?://music\.apple\.com/"
 ).unwrap());
 
 pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -> ResponseResult<()> {
@@ -40,16 +34,7 @@ pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<
                 bot.edit_message_text(msg.chat.id, sent.id, format!("🔍 Found: {}\nSearching on Deezer...", meta.label)).await?;
                 match deemix::search(state, &meta.query, search_type).await {
                     Ok(results) if results.is_empty() => {
-                        // Fallback: try Odesli directly before giving up
-                        match voice::lookup_deezer_via_spotify(&state.http, url).await {
-                            Some(deezer_url) => {
-                                match deemix::add_to_queue(state, &deezer_url).await {
-                                    Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} added to queue!", meta.label)).await?; }
-                                    Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?; }
-                                }
-                            }
-                            None => { bot.edit_message_text(msg.chat.id, sent.id, format!("😕 No results found on Deezer for: {}", meta.query)).await?; }
-                        }
+                        bot.edit_message_text(msg.chat.id, sent.id, format!("😕 No results found on Deezer for: {}", meta.query)).await?;
                     }
                     Ok(results) => {
                         let icon = if search_type == "track" { "🎵" } else { "💿" };
@@ -80,52 +65,6 @@ pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<
         }
         return Ok(());
     }
-
-    // YouTube playlist: same per-track treatment
-    let mut url = url.to_string();
-    if YOUTUBE_RE.is_match(&url) && youtube::playlist_id(&url).is_some() {
-        bot.edit_message_text(msg.chat.id, sent.id, "🔍 Reading YouTube playlist...").await?;
-        match youtube::resolve_playlist(&state.http, &url).await {
-            Some(pl) => {
-                queue_playlist(bot, msg, state, sent.id, &pl).await?;
-                return Ok(());
-            }
-            None => {
-                if url.contains("watch?v=") || url.contains("youtu.be/") {
-                    // Mixes and private lists can't be scanned — fall back to the single video
-                    url = youtube::strip_playlist_params(&url);
-                } else {
-                    bot.edit_message_text(msg.chat.id, sent.id,
-                        "😕 Couldn't read that YouTube playlist. Make sure it's public and try again.").await?;
-                    return Ok(());
-                }
-            }
-        }
-    }
-    let url = url.as_str();
-
-    // Single YouTube video / Apple Music: convert via Odesli to a Deezer URL and queue directly
-    let service = if YOUTUBE_RE.is_match(url) {
-        "YouTube link".to_string()
-    } else {
-        "Apple Music link".to_string()
-    };
-
-    bot.edit_message_text(msg.chat.id, sent.id, format!("🔍 Looking up {} on Deezer...", service)).await?;
-
-    match voice::lookup_deezer_via_spotify(&state.http, url).await {
-        Some(deezer_url) => {
-            match deemix::add_to_queue(state, &deezer_url).await {
-                Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} added to queue!", capitalize(&service))).await?; }
-                Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?; }
-            }
-        }
-        None => {
-            bot.edit_message_text(msg.chat.id, sent.id,
-                format!("😕 Couldn't find this {} on Deezer. Try searching by name with /search.", service)).await?;
-        }
-    }
-
     Ok(())
 }
 
@@ -183,9 +122,8 @@ async fn queue_playlist(
     }
 
     let mut text = format!("✅ Playlist \"{}\": queued {}/{} tracks.", pl.name, queued, total);
-    // Both resolvers (Spotify embed page, YouTube ytInitialData) expose only
-    // the first ~100 tracks per playlist, so a count at that limit means the
-    // source playlist may have been truncated.
+    // The Spotify embed page exposes only the first ~100 tracks per playlist,
+    // so a count at that limit means the source playlist may have been truncated.
     if total >= 100 {
         text.push_str("\n\n⚠️ Note: the source platform only exposes the first ~100 tracks per playlist, so longer playlists may be scanned partially.");
     }

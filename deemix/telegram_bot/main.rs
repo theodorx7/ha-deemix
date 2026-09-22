@@ -17,15 +17,14 @@ mod streaming;
 mod deemix;
 mod users;
 mod voice;
-mod youtube;
 
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
 use keyboards::{arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
 use voice::{receive_voice_recognize, receive_voice_transcribe};
 use streaming::{
-    handle_streaming_link, APPLE_MUSIC_RE, SPOTIFY_ALBUM_RE,
-    SPOTIFY_PLAYLIST_RE, SPOTIFY_TRACK_RE, YOUTUBE_RE,
+    handle_streaming_link, SPOTIFY_ALBUM_RE,
+    SPOTIFY_PLAYLIST_RE, SPOTIFY_TRACK_RE,
 };
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
@@ -530,8 +529,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
     
     // ── Streaming service URLs ──
     if SPOTIFY_TRACK_RE.is_match(&link) || SPOTIFY_ALBUM_RE.is_match(&link)
-        || SPOTIFY_PLAYLIST_RE.is_match(&link) || YOUTUBE_RE.is_match(&link)
-        || APPLE_MUSIC_RE.is_match(&link)
+        || SPOTIFY_PLAYLIST_RE.is_match(&link)
     {
         handle_streaming_link(&bot, &msg, &state, &link).await?;
         return Ok(());
@@ -557,7 +555,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
     // ── Unknown link ──
     bot.send_message(
         msg.chat.id,
-        "🤷 Unsupported link.\nSend me a link from Deezer, Spotify, Apple Music, or YouTube.",
+        "🤷 Unsupported link.\nSend me a link from Deezer, Spotify, or Apple Music.",
     )
     .await?;
     Ok(())

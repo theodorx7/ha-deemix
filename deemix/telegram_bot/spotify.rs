@@ -14,7 +14,7 @@ pub struct SpotifyMeta {
     pub label: String,
 }
 
-/// A single track scanned from a playlist (Spotify or YouTube).
+/// A single track scanned from a playlist.
 pub struct PlaylistTrack {
     pub title: String,
     pub artist: String,
@@ -29,7 +29,10 @@ pub struct Playlist {
 /// Uses the Spotify embed page __NEXT_DATA__ JSON — no API key required.
 /// Falls back to oEmbed for title if embed page fails.
 pub async fn resolve(url: &str) -> Option<SpotifyMeta> {
-    let client = Client::new();
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("Failed to build HTTP client");
 
     let (title, artist) = get_metadata_from_embed(&client, url).await;
 
@@ -59,7 +62,10 @@ pub async fn resolve(url: &str) -> Option<SpotifyMeta> {
 /// playlist, including user-generated ones. The embed page exposes roughly the
 /// first 100 tracks.
 pub async fn resolve_playlist(url: &str) -> Option<Playlist> {
-    let client = Client::new();
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("Failed to build HTTP client");
     let entity = get_embed_entity(&client, url).await?;
 
     let name = entity["name"]

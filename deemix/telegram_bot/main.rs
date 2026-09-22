@@ -7,6 +7,7 @@ use teloxide::{
     dispatching::dialogue::InMemStorage,
     prelude::*,
     types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup},
+    utils::command::BotCommands,
 };
 
 mod config;
@@ -61,6 +62,11 @@ async fn main() {
     let token = env::var("TELEGRAM_TOKEN").expect("TELEGRAM_TOKEN must be set");
     let bot = Bot::new(token);
 
+    // Register the native Telegram command menu (shown when typing "/" in the chat)
+    let commands: Vec<teloxide::types::BotCommand> = Command::descriptions().setters().collect();
+    if let Err(e) = bot.set_my_commands(commands).await {
+        log::warn!("Failed to register the command menu: {}", e);
+    }
     deemix::login(&state).await;
 
     log::info!("Telegram bot starting...");

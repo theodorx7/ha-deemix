@@ -34,6 +34,14 @@ static DEEZER_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
 static DEEZER_SHORT_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"https?://link\.deezer\.com/s/\S+"
 ).unwrap());
+// First explicit http(s) URL anywhere in a message (any host)
+static ANY_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"(?i)\bhttps?://\S+"
+).unwrap());
+// Bare supported-service domain without a scheme, e.g. "youtube.com/watch?v=…"
+static BARE_DOMAIN_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"(?i)(?:^|[\s(])((?:[\w-]+\.)*(?:deezer\.com|spotify\.com|youtube\.com|youtu\.be|apple\.com)(?:/\S*)?)"
+).unwrap());
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 #[tokio::main]
@@ -88,8 +96,6 @@ async fn main() {
                 .branch(dptree::case![State::AwaitingArl].endpoint(receive_arl))
                 .branch(dptree::case![State::AwaitingSearch].endpoint(receive_search))
                 .branch(dptree::case![State::AwaitingAlbum].endpoint(receive_album))
-                .branch(dptree::case![State::AwaitingDl].endpoint(receive_dl))
-                .branch(dptree::case![State::AwaitingSpotify].endpoint(receive_spotify))
                 .branch(dptree::case![State::AwaitingVoiceTranscribe].endpoint(receive_voice_transcribe))
                 .branch(dptree::case![State::AwaitingVoiceRecognize].endpoint(receive_voice_recognize))
                 .branch(
@@ -185,8 +191,6 @@ I connect to your personal deemix server and queue music downloads for you. Just
 /menu — quick action buttons\n\
 /search — search for a track\n\
 /album — search for an album\n\
-/dl — queue from a Deezer URL\n\
-/sp — queue from a streaming link (Spotify, YouTube, Apple Music)\n\
 /status — check deemix connection and queue\n\
 /clearqueue — clear completed downloads from queue\n\
 /settings — manage your personal preferences\n\
@@ -215,12 +219,6 @@ I connect to your personal deemix server and queue music downloads for you. Just
             }
         }
 
-        Command::Dl => {
-            dialogue.update(State::AwaitingDl).await
-                .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
-            bot.send_message(msg.chat.id, "🎵 Send me a Deezer URL:").await?;
-        }
-
         Command::Search => {
             dialogue.update(State::AwaitingSearch).await
                 .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
@@ -231,12 +229,6 @@ I connect to your personal deemix server and queue music downloads for you. Just
             dialogue.update(State::AwaitingAlbum).await
                 .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
             bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
-        }
-
-        Command::Sp => {
-            dialogue.update(State::AwaitingSpotify).await
-                .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
-            bot.send_message(msg.chat.id, "🔗 Send me a link from Spotify, YouTube, YouTube Music, or Apple Music:").await?;
         }
 
         Command::Clearqueue => {
@@ -280,18 +272,6 @@ async fn receive_search(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
 async fn receive_album(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
     dialogue.exit().await.ok();
     if let Some(query) = msg.text() { do_search(&bot, &msg, &state, query.trim(), "album").await?; }
-    Ok(())
-}
-
-async fn receive_dl(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
-    dialogue.exit().await.ok();
-    if let Some(url) = msg.text() { queue_url(&bot, &msg, &state, url.trim()).await?; }
-    Ok(())
-}
-
-async fn receive_spotify(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
-    dialogue.exit().await.ok();
-    if let Some(url) = msg.text() { handle_streaming_link(&bot, &msg, &state, url.trim()).await?; }
     Ok(())
 }
 
@@ -368,16 +348,6 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
         "💿 Search an album" => {
             dialogue.update(State::AwaitingAlbum).await.ok();
             bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
-            return Ok(());
-        }
-        "🔗 From streaming link" => {
-            dialogue.update(State::AwaitingSpotify).await.ok();
-            bot.send_message(msg.chat.id, "🔗 Send me a link from Spotify, YouTube, YouTube Music, or Apple Music:").await?;
-            return Ok(());
-        }
-        "🎵 From Deezer URL" => {
-            dialogue.update(State::AwaitingDl).await.ok();
-            bot.send_message(msg.chat.id, "🎵 Send me a Deezer URL:").await?;
             return Ok(());
         }
         "🎤 Voice search" => {
@@ -479,8 +449,6 @@ I connect to your personal deemix server and queue music downloads. Just tell me
 /menu — quick action buttons\n\
 /search — search for a track\n\
 /album — search for an album\n\
-/dl — queue from a Deezer URL\n\
-/sp — queue from a streaming link (Spotify, YouTube, Apple Music)\n\
 /status — check deemix\n\
 /clearqueue — clear completed downloads from queue\n\
 /settings — your personal settings\n\
@@ -542,18 +510,28 @@ I connect to your personal deemix server and queue music downloads. Just tell me
         _ => {}
     }
 
+    // ── Link extraction ──
+    // Pull the first link out of the message (an explicit http(s) URL or a
+    // bare supported-service domain) so the handlers below always receive a
+    // clean URL instead of the whole message text.
+    let Some(link) = extract_link(&text) else {
+        // No link found — treat the whole message as a search query
+        do_search(&bot, &msg, &state, &text, "track").await?;
+        return Ok(());
+    };
+    
     // ── Streaming service URLs ──
-    if SPOTIFY_TRACK_RE.is_match(&text) || SPOTIFY_ALBUM_RE.is_match(&text)
-        || SPOTIFY_PLAYLIST_RE.is_match(&text) || YOUTUBE_RE.is_match(&text)
-        || APPLE_MUSIC_RE.is_match(&text)
+    if SPOTIFY_TRACK_RE.is_match(&link) || SPOTIFY_ALBUM_RE.is_match(&link)
+        || SPOTIFY_PLAYLIST_RE.is_match(&link) || YOUTUBE_RE.is_match(&link)
+        || APPLE_MUSIC_RE.is_match(&link)
     {
-        handle_streaming_link(&bot, &msg, &state, &text).await?;
+        handle_streaming_link(&bot, &msg, &state, &link).await?;
         return Ok(());
     }
 
     // ── Deezer short URL ──
-    if DEEZER_SHORT_RE.is_match(&text) {
-        let resolved = resolve_short_link(&state.http, &text).await;
+    if DEEZER_SHORT_RE.is_match(&link) {
+        let resolved = resolve_short_link(&state.http, &link).await;
         if let Some(url) = resolved {
             queue_url(&bot, &msg, &state, &url).await?;
         } else {
@@ -563,13 +541,17 @@ I connect to your personal deemix server and queue music downloads. Just tell me
     }
 
     // ── Full Deezer URL ──
-    if DEEZER_URL_RE.is_match(&text) {
-        queue_url(&bot, &msg, &state, &text).await?;
+    if DEEZER_URL_RE.is_match(&link) {
+        queue_url(&bot, &msg, &state, &link).await?;
         return Ok(());
     }
 
-    // ── Plain text search ──
-    do_search(&bot, &msg, &state, &text, "track").await?;
+    // ── Unknown link ──
+    bot.send_message(
+        msg.chat.id,
+        "🤷 Unsupported link.\nSend me a link from Deezer, Spotify, Apple Music, or YouTube.",
+    )
+    .await?;
     Ok(())
 }
 
@@ -628,6 +610,26 @@ async fn handle_callback(
 async fn resolve_short_link(http: &Client, url: &str) -> Option<String> {
     let resp = http.head(url).send().await.ok()?;
     Some(resp.url().to_string())
+}
+
+/// Extract the first link from a user message: an explicit http(s) URL of any
+/// host, or a bare supported-service domain (e.g. "youtube.com/watch?v=…"),
+/// which gets an "https://" prefix added.
+fn extract_link(text: &str) -> Option<String> {
+    if let Some(m) = ANY_URL_RE.find(text) {
+        return Some(trim_trailing_punct(m.as_str()));
+    }
+    BARE_DOMAIN_RE
+        .captures(text)
+        .and_then(|c| c.get(1))
+        .map(|m| format!("https://{}", trim_trailing_punct(m.as_str())))
+}
+
+/// Strip trailing punctuation that belongs to the surrounding sentence, not
+/// the URL itself (e.g. "…link: https://…/xyz." or "(https://…/xyz)").
+fn trim_trailing_punct(url: &str) -> String {
+    url.trim_end_matches(['.', ',', ';', ':', '!', '?', ')', ']', '}', '>', '"', '\'', '«', '»'])
+        .to_string()
 }
 
 async fn queue_url(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -> ResponseResult<()> {

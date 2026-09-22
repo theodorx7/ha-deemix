@@ -56,10 +56,6 @@ pub(crate) fn main_keyboard(s: &UserSettings, config: &Config) -> KeyboardMarkup
             KeyboardButton::new("🔍 Search a track"),
             KeyboardButton::new("💿 Search an album"),
         ],
-        vec![
-            KeyboardButton::new("🔗 From streaming link"),
-            KeyboardButton::new("🎵 From Deezer URL"),
-        ],
     ];
 
     // Only show voice buttons if features are configured AND user has them enabled

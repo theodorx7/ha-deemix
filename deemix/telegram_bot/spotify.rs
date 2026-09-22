@@ -1,6 +1,13 @@
+use std::sync::LazyLock;
+
 use regex::Regex;
 use reqwest::Client;
 use serde_json::Value;
+
+// JSON payload embedded in Spotify embed pages
+static NEXT_DATA_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r#"<script id="__NEXT_DATA__" type="application/json">(.*?)</script>"#
+).unwrap());
 
 pub struct SpotifyMeta {
     pub query: String,
@@ -94,9 +101,7 @@ async fn get_embed_entity(client: &Client, url: &str) -> Option<Value> {
     let resp = client.get(&embed_url).send().await.ok()?;
     let body = resp.text().await.ok()?;
 
-    let re = Regex::new(r#"<script id="__NEXT_DATA__" type="application/json">(.*?)</script>"#)
-        .unwrap();
-    let json_str = re.captures(&body)?.get(1)?.as_str();
+    let json_str = NEXT_DATA_RE.captures(&body)?.get(1)?.as_str();
 
     let data: Value = serde_json::from_str(json_str).ok()?;
     let entity = data["props"]["pageProps"]["state"]["data"]["entity"].clone();

@@ -10,12 +10,17 @@
 use reqwest::multipart;
 use regex::Regex;
 
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use teloxide::prelude::*;
 use teloxide::types::{CallbackQuery, FileId, InlineKeyboardButton, InlineKeyboardMarkup};
 
 use crate::{BotState, MyDialogue, build_search_results, deemix, spotify, user_id_from_msg, users};
+
+// JSON payload embedded in song.link/lis.tn pages
+static SONG_LINK_NEXT_DATA_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r#"<script id="__NEXT_DATA__" type="application/json">(.*?)</script>"#
+).unwrap());
 
 /// Transcribe an OGG audio file using the configured Whisper backend.
 /// Returns the transcribed text or an error string.
@@ -149,8 +154,7 @@ pub async fn lookup_deezer_via_odesli(http: &reqwest::Client, song_link: &str) -
     }
     let html = resp.text().await.ok()?;
 
-    let re = Regex::new(r#"<script id="__NEXT_DATA__" type="application/json">(.*?)</script>"#).ok()?;
-    let caps = re.captures(&html);
+    let caps = SONG_LINK_NEXT_DATA_RE.captures(&html);
     log::info!("song.link __NEXT_DATA__ regex matched: {}", caps.is_some());
     let json_str = caps?.get(1)?.as_str().to_string();
 

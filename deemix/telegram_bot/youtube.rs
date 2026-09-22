@@ -20,6 +20,10 @@ static TITLE_NOISE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
 static YT_INITIAL_DATA_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"(?s)var ytInitialData\s*=\s*(\{.*?\});\s*</script>"
 ).unwrap());
+// Query params that turn a watch URL into a playlist/radio context
+static STRIP_PARAMS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"[?&](list|index|start_radio)=[^&]*"
+).unwrap());
 
 pub fn playlist_id(url: &str) -> Option<String> {
     LIST_ID_RE.captures(url).and_then(|c| c.get(1)).map(|m| m.as_str().to_string())
@@ -27,8 +31,7 @@ pub fn playlist_id(url: &str) -> Option<String> {
 
 /// Strip list/index params so a watch URL can be handled as a single video.
 pub fn strip_playlist_params(url: &str) -> String {
-    let re = Regex::new(r"[?&](list|index|start_radio)=[^&]*").unwrap();
-    let stripped = re.replace_all(url, "").to_string();
+    let stripped = STRIP_PARAMS_RE.replace_all(url, "").to_string();
     // If we removed the first query param, the remaining "&" must become "?"
     if !stripped.contains('?') {
         stripped.replacen('&', "?", 1)

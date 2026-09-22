@@ -63,8 +63,7 @@ async fn main() {
     let bot = Bot::new(token);
 
     // Register the native Telegram command menu (shown when typing "/" in the chat)
-    let commands: Vec<teloxide::types::BotCommand> = Command::descriptions().commands().to_vec();
-    if let Err(e) = bot.set_my_commands(commands).await {
+    if let Err(e) = bot.set_my_commands(Command::descriptions()).await {
         log::warn!("Failed to register the command menu: {}", e);
     }
     deemix::login(&state).await;

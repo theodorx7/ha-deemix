@@ -32,7 +32,6 @@ use streaming::{
 // and classification (route a clean URL to the right handler below).
 // Deezer classification patterns:
 static DEEZER_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-static DEEZER_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"https?://(?:www\.)?deezer\.com/(?:[a-z]+/)?(track|album|playlist|artist)/(\d+)"
 ).unwrap());
 static DEEZER_SHORT_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(

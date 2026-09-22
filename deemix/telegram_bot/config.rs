@@ -120,7 +120,7 @@ impl BotState {
 
 // ── Commands ──────────────────────────────────────────────────────────────────
 #[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase", description = "Teleemix commands:")]
+#[command(rename_rule = "lowercase", description = "Deemix commands:")]
 pub(crate) enum Command {
     #[command(description = "Welcome message")]
     Start,

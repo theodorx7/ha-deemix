@@ -26,8 +26,6 @@ pub enum State {
     AwaitingArl,
     AwaitingSearch,
     AwaitingAlbum,
-    AwaitingDl,
-    AwaitingSpotify,
     AwaitingVoiceTranscribe,
     AwaitingVoiceRecognize,
 }
@@ -130,14 +128,10 @@ pub(crate) enum Command {
     Help,
     #[command(description = "Check deemix status")]
     Status,
-    #[command(description = "Queue a Deezer URL")]
-    Dl,
     #[command(description = "Search for a track")]
     Search,
     #[command(description = "Search for an album")]
     Album,
-    #[command(description = "Download from a streaming link (Spotify, YouTube, Apple Music)")]
-    Sp,
     #[command(description = "Clear completed downloads from queue")]
     Clearqueue,
     #[command(description = "Show quick action buttons")]

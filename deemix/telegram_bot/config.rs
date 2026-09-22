@@ -103,6 +103,7 @@ impl BotState {
     pub fn new(config: Config, users: UsersDb) -> Self {
         let http = Client::builder()
             .cookie_store(true)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .expect("Failed to build HTTP client");
         let default_bitrate = config.deemix_bitrate;

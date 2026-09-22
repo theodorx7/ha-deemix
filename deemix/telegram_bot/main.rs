@@ -42,9 +42,11 @@ static DEEZER_SHORT_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
 static ANY_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"(?i)\bhttps?://\S+"
 ).unwrap());
-// Bare supported-service domain without a scheme, e.g. "youtube.com/watch?v=…"
-static BARE_DOMAIN_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"(?i)(?:^|[\s(])((?:[\w-]+\.)*(?:deezer\.com|spotify\.com|youtube\.com|youtu\.be|apple\.com)(?:/\S*)?)"
+// A bare web address without a scheme — only counts as a URL when a path
+// follows the TLD ("deezer.com/track/123"); a bare "word.word" without a
+// slash stays plain text and goes to search
+static BARE_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"(?i)(?:^|\W)((?:[\w-]+\.)+[a-z]{2,}/\S*)"
 ).unwrap());
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -617,13 +619,13 @@ async fn resolve_short_link(http: &Client, url: &str) -> Option<String> {
 }
 
 /// Extract the first link from a user message: an explicit http(s) URL of any
-/// host, or a bare supported-service domain (e.g. "youtube.com/watch?v=…"),
+/// host, or a bare web address carrying a path (e.g. "deezer.com/track/123"),
 /// which gets an "https://" prefix added.
 fn extract_link(text: &str) -> Option<String> {
     if let Some(m) = ANY_URL_RE.find(text) {
         return Some(trim_trailing_punct(m.as_str()));
     }
-    BARE_DOMAIN_RE
+    BARE_URL_RE
         .captures(text)
         .and_then(|c| c.get(1))
         .map(|m| format!("https://{}", trim_trailing_punct(m.as_str())))

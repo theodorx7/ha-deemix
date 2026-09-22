@@ -33,10 +33,10 @@ use streaming::{
 // and classification (route a clean URL to the right handler below).
 // Deezer classification patterns:
 static DEEZER_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"https?://(?:www\.)?deezer\.com/(?:[a-z]+/)?(track|album|playlist|artist)/(\d+)"
+    r"(?i)https?://(?:www\.)?deezer\.com/(?:[a-z]+/)?(track|album|playlist|artist)/(\d+)"
 ).unwrap());
 static DEEZER_SHORT_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"https?://link\.deezer\.com/s/\S+"
+    r"(?i)https?://(?:link\.deezer\.com/s/|deezer\.page\.link/)\S+"
 ).unwrap());
 // Extraction layer (used by extract_link):
 static ANY_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
@@ -597,7 +597,7 @@ async fn handle_callback(
         if let Some(msg) = &q.message {
             let kind = DEEZER_URL_RE.captures(url)
                 .and_then(|c| c.get(1))
-                .map(|m| capitalize(m.as_str()))
+                .map(|m| capitalize(&m.as_str().to_lowercase()))
                 .unwrap_or_else(|| "Item".to_string());
             bot.edit_message_text(msg.chat().id, msg.id(), format!("⏳ Queuing {}...", kind.to_lowercase())).await?;
             match deemix::add_to_queue(&state, url).await {
@@ -648,11 +648,11 @@ async fn queue_url(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -
             return Ok(());
         }
     };
-    let kind = cap.get(1).map(|m| m.as_str()).unwrap_or("item");
+    let kind = cap.get(1).map(|m| m.as_str().to_lowercase()).unwrap_or_else(|| "item".to_string());
     let sent = bot.send_message(msg.chat.id, format!("⏳ Queuing {}...", kind)).await?;
 
     match deemix::add_to_queue(state, url).await {
-        Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} added to queue!", capitalize(kind))).await?; }
+        Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} added to queue!", capitalize(&kind))).await?; }
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?; }
     }
     Ok(())

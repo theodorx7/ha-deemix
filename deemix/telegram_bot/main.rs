@@ -664,12 +664,17 @@ pub(crate) fn build_search_results(results: &[serde_json::Value], icon: &str) ->
     let mut listing = String::new();
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
     for (i, item) in results.iter().enumerate() {
+        // Skip entries without a usable Deezer link — they would produce a dead button
+        let link = match item["link"].as_str() {
+            Some(l) if !l.is_empty() => l,
+            _ => continue,
+        };
         let title = item["title"].as_str().unwrap_or("?");
         let artist = item["artist"]["name"].as_str().unwrap_or("?");
         listing.push_str(&format!("{}. {} — {}\n", i + 1, title, artist));
         let label = format!("{} {}. {} — {}", icon, i + 1, title, artist);
         let label = if label.chars().count() > 60 { format!("{}…", label.chars().take(59).collect::<String>()) } else { label };
-        buttons.push(vec![InlineKeyboardButton::callback(label, format!("dl:{}", item["link"].as_str().unwrap_or("")))]);
+        buttons.push(vec![InlineKeyboardButton::callback(label, format!("dl:{}", link))]);
     }
     (listing, buttons)
 }

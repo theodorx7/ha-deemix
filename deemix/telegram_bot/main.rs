@@ -28,13 +28,17 @@ use streaming::{
 };
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
+// Two layers: extraction (pull a clean URL out of arbitrary message text)
+// and classification (route a clean URL to the right handler below).
+// Deezer classification patterns:
+static DEEZER_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
 static DEEZER_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"https?://(?:www\.)?deezer\.com/(?:[a-z]+/)?(track|album|playlist|artist)/(\d+)"
 ).unwrap());
 static DEEZER_SHORT_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"https?://link\.deezer\.com/s/\S+"
 ).unwrap());
-// First explicit http(s) URL anywhere in a message (any host)
+// Extraction layer (used by extract_link):
 static ANY_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"(?i)\bhttps?://\S+"
 ).unwrap());

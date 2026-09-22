@@ -178,7 +178,7 @@ async fn handle_command(
             let kb = main_keyboard(&user_settings, &state.config);
             bot.send_message(
                 msg.chat.id,
-                "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name, a Deezer link, or a Spotify link and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
+                "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name or a link from Deezer, Spotify, YouTube, or Apple Music, and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
             )
             .reply_markup(kb)
             .await?;

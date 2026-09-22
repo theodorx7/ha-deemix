@@ -14,19 +14,19 @@ use crate::{BotState, build_search_results, capitalize, deemix, spotify, voice, 
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
 pub(crate) static SPOTIFY_TRACK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"https?://open\.spotify\.com/track/([A-Za-z0-9]+)"
+    r"(?i)https?://open\.spotify\.com/(?:intl-[a-z-]+/)?track/([A-Za-z0-9]+)"
 ).unwrap());
 pub(crate) static SPOTIFY_ALBUM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"https?://open\.spotify\.com/album/([A-Za-z0-9]+)"
+    r"(?i)https?://open\.spotify\.com/(?:intl-[a-z-]+/)?album/([A-Za-z0-9]+)"
 ).unwrap());
 pub(crate) static SPOTIFY_PLAYLIST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"https?://open\.spotify\.com/playlist/[A-Za-z0-9]+"
+    r"(?i)https?://open\.spotify\.com/(?:intl-[a-z-]+/)?playlist/[A-Za-z0-9]+"
 ).unwrap());
 pub(crate) static YOUTUBE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"https?://(?:(?:www\.)?youtube\.com/|youtu\.be/|music\.youtube\.com/)"
+    r"(?i)https?://(?:(?:www\.|m\.|music\.)?youtube\.com/|youtu\.be/)"
 ).unwrap());
 pub(crate) static APPLE_MUSIC_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
-    r"https?://music\.apple\.com/"
+    r"(?i)https?://music\.apple\.com/"
 ).unwrap());
 
 pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -> ResponseResult<()> {

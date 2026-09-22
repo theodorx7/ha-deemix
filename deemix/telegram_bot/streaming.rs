@@ -1,4 +1,4 @@
-//! Streaming-link handling: Spotify links.
+//! Streaming-link handling: Spotify and Apple Music links.
 //!
 //! Converts a streaming URL to Deezer: tracks and albums via metadata search,
 //! playlists are scanned per-track.
@@ -10,7 +10,7 @@ use regex::Regex;
 use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
-use crate::{BotState, build_search_results, deemix, spotify};
+use crate::{BotState, apple, build_search_results, deemix, spotify};
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
 pub(crate) static SPOTIFY_TRACK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
@@ -62,6 +62,32 @@ pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<
                 bot.edit_message_text(msg.chat.id, sent.id,
                     "😕 Couldn't read that Spotify playlist. Make sure it's public and try again.").await?;
             }
+        }
+        return Ok(());
+    }
+    // Apple Music song or album: resolve metadata via the free iTunes lookup
+    // API (an album link with ?i= resolves to that single song), then show
+    // Deezer search results
+    if apple::APPLE_SONG_RE.is_match(url) || apple::APPLE_ALBUM_RE.is_match(url) {
+        match apple::resolve(url).await {
+            Some(meta) => {
+                bot.edit_message_text(msg.chat.id, sent.id, format!("🔍 Found: {}\nSearching on Deezer...", meta.label)).await?;
+                match deemix::search(state, &meta.query, meta.search_type).await {
+                    Ok(results) if results.is_empty() => {
+                        bot.edit_message_text(msg.chat.id, sent.id, format!("😕 No results found on Deezer for: {}", meta.query)).await?;
+                    }
+                    Ok(results) => {
+                        let icon = if meta.search_type == "track" { "🎵" } else { "💿" };
+                        let (listing, mut buttons) = build_search_results(&results, icon);
+                        buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
+                        bot.edit_message_text(msg.chat.id, sent.id, format!("Results for {}:\n\n{}\nTap a button to download.", meta.query, listing))
+                            .reply_markup(InlineKeyboardMarkup::new(buttons))
+                            .await?;
+                    }
+                    Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Search failed: {}", e)).await?; }
+                }
+            }
+            None => { bot.edit_message_text(msg.chat.id, sent.id, "❌ Could not resolve Apple Music link. Try /search instead.").await?; }
         }
         return Ok(());
     }

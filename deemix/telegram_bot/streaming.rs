@@ -52,8 +52,7 @@ pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<
         return Ok(());
     }
 
-    // Spotify playlist: scan the track list and queue each song individually,
-    // so user-generated playlists work (Deezer rarely has a same-named playlist)
+    // Spotify playlist: scan the track list and queue each song individually, so user-generated playlists work (Deezer rarely has a same-named playlist)
     if SPOTIFY_PLAYLIST_RE.is_match(url) {
         bot.edit_message_text(msg.chat.id, sent.id, "🔍 Reading Spotify playlist...").await?;
         match spotify::resolve_playlist(url).await {
@@ -65,9 +64,7 @@ pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<
         }
         return Ok(());
     }
-    // Apple Music song or album: resolve metadata via the free iTunes lookup
-    // API (an album link with ?i= resolves to that single song), then show
-    // Deezer search results
+    // Apple Music song or album: resolve metadata via the free iTunes lookup API (an album link with ?i= resolves to that single song), then show Deezer search results
     if apple::APPLE_SONG_RE.is_match(url) || apple::APPLE_ALBUM_RE.is_match(url) {
         match apple::resolve(url).await {
             Some(meta) => {
@@ -98,9 +95,7 @@ fn first_link(results: &[serde_json::Value]) -> Option<String> {
     results.first().and_then(|x| x["link"].as_str()).map(|s| s.to_string())
 }
 
-/// Queue every track of a scanned playlist by searching it on Deezer and
-/// queuing the first match. Edits the status message with progress and a
-/// final summary of anything that couldn't be found.
+/// Queue every track of a scanned playlist by searching it on Deezer and queuing the first match. Edits the status message with progress and a final summary of anything that couldn't be found.
 async fn queue_playlist(
     bot: &Bot,
     msg: &Message,
@@ -110,6 +105,7 @@ async fn queue_playlist(
 ) -> ResponseResult<()> {
     let total = pl.tracks.len();
     let mut queued = 0usize;
+    let mut already = 0usize;
     let mut not_found: Vec<String> = Vec::new();
 
     for (i, track) in pl.tracks.iter().enumerate() {
@@ -136,8 +132,13 @@ async fn queue_playlist(
             format!("{} — {}", track.title, track.artist)
         };
         match link {
-            Some(l) => match deemix::add_to_queue(state, &l).await {
-                Ok(_) => queued += 1,
+            Some(l) => match deemix::add_to_queue_confirmed(state, &l, false).await {
+                Ok(deemix::QueueOutcome::Added { .. }) => queued += 1,
+                Ok(deemix::QueueOutcome::AlreadyInQueue { .. }) => already += 1,
+                Ok(oc) => {
+                    log::warn!("[playlist] not queued {:?}: {:?}", label, oc);
+                    not_found.push(label);
+                }
                 Err(e) => {
                     log::warn!("[playlist] failed to queue {:?}: {}", label, e);
                     not_found.push(label);
@@ -145,11 +146,16 @@ async fn queue_playlist(
             },
             None => not_found.push(label),
         }
+            },
+            None => not_found.push(label),
+        }
     }
 
     let mut text = format!("✅ Playlist \"{}\": queued {}/{} tracks.", pl.name, queued, total);
-    // The Spotify embed page exposes only the first ~100 tracks per playlist,
-    // so a count at that limit means the source playlist may have been truncated.
+    if already > 0 {
+        text.push_str(&format!("\nℹ️ Already in queue: {}.", already));
+    }
+    // The Spotify embed page exposes only the first ~100 tracks per playlist, so a count at that limit means the source playlist may have been truncated.
     if total >= 100 {
         text.push_str("\n\n⚠️ Note: the source platform only exposes the first ~100 tracks per playlist, so longer playlists may be scanned partially.");
     }

@@ -17,6 +17,7 @@ mod streaming;
 mod deemix;
 mod users;
 mod voice;
+mod ws;
 
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
@@ -60,6 +61,8 @@ async fn main() {
     }
     let users = users::load(&config.users_file);
     let state = Arc::new(BotState::new(config, users));
+    // Background WebSocket listener for deemix queue events (queueError alreadyInQueue) — see telegram_bot/ws.rs
+    tokio::spawn(ws::run_ws_listener(Arc::clone(&state)));
 
     let token = env::var("TELEGRAM_TOKEN").expect("TELEGRAM_TOKEN must be set");
     let bot = Bot::new(token);
@@ -573,11 +576,12 @@ async fn handle_callback(
         if let Some(msg) = &q.message {
             let kind = DEEZER_URL_RE.captures(url)
                 .and_then(|c| c.get(1))
-                .map(|m| capitalize(&m.as_str().to_lowercase()))
-                .unwrap_or_else(|| "Item".to_string());
-            bot.edit_message_text(msg.chat().id, msg.id(), format!("⏳ Queuing {}...", kind.to_lowercase())).await?;
-            match deemix::add_to_queue(&state, url).await {
-                Ok(_) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("✅ {} added to queue!", kind)).await?; }
+                .map(|m| m.as_str().to_lowercase())
+                .unwrap_or_else(|| "item".to_string());
+            let artist = kind == "artist";
+            bot.edit_message_text(msg.chat().id, msg.id(), format!("⏳ Queuing {}...", kind)).await?;
+            match deemix::add_to_queue_confirmed(&state, url, artist).await {
+                Ok(oc) => { bot.edit_message_text(msg.chat().id, msg.id(), format_queue_outcome(&capitalize(&kind), &oc)).await?; }
                 Err(e) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed: {}", e)).await?; }
             }
         }
@@ -625,10 +629,11 @@ async fn queue_url(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -
         }
     };
     let kind = cap.get(1).map(|m| m.as_str().to_lowercase()).unwrap_or_else(|| "item".to_string());
+    let artist = kind == "artist";
     let sent = bot.send_message(msg.chat.id, format!("⏳ Queuing {}...", kind)).await?;
 
-    match deemix::add_to_queue(state, url).await {
-        Ok(_) => { bot.edit_message_text(msg.chat.id, sent.id, format!("✅ {} added to queue!", capitalize(&kind))).await?; }
+    match deemix::add_to_queue_confirmed(state, url, artist).await {
+        Ok(oc) => { bot.edit_message_text(msg.chat.id, sent.id, format_queue_outcome(&capitalize(&kind), &oc)).await?; }
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?; }
     }
     Ok(())
@@ -702,6 +707,39 @@ async fn handle_updatearl(bot: &Bot, msg: &Message, state: &Arc<BotState>, arl: 
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ ARL rejected by deemix: {}", e)).await?; }
     }
     Ok(())
+}
+
+/// Render a verified addToQueue outcome as the user-facing message. `label` is the capitalized request kind ("Track", "Album", ...).
+pub(crate) fn format_queue_outcome(label: &str, oc: &deemix::QueueOutcome) -> String {
+    use deemix::QueueOutcome;
+    match oc {
+        QueueOutcome::Added { tracks, is_track, already, failed } => {
+            let mut text = format!("✅ {} added to queue!", label);
+            if !is_track {
+                text.push_str(&format!(" ({} tracks", tracks));
+                if *already > 0 { text.push_str(&format!(", {} already in queue", already)); }
+                if *failed > 0 { text.push_str(&format!(", {} not added", failed)); }
+                text.push(')');
+            }
+            text
+        }
+        QueueOutcome::AlreadyInQueue { title, artist, size, more } => {
+            let mut text = format!("ℹ️ Already in queue: {} — {}", title, artist);
+            if *size > 1 { text.push_str(&format!(" ({} tracks)", size)); }
+            if *more > 0 { text.push_str(&format!(" (+{} more)", more)); }
+            text
+        }
+        QueueOutcome::Failed { error, errid } => match errid {
+            Some(errid) => format!("❌ Error adding to queue: {} ({})", error, errid),
+            None => format!("❌ Error adding to queue: {}", error),
+        },
+        QueueOutcome::NothingAdded { ws_connected: true } => {
+            "⚠️ Nothing was added to the queue.".to_string()
+        }
+        QueueOutcome::NothingAdded { ws_connected: false } => {
+            "⚠️ Connection to Deemix lost - download queue status unknown.".to_string()
+        }
+    }
 }
 
 pub(crate) fn capitalize(s: &str) -> String {

@@ -146,9 +146,6 @@ async fn queue_playlist(
             },
             None => not_found.push(label),
         }
-            },
-            None => not_found.push(label),
-        }
     }
 
     let mut text = format!("✅ Playlist \"{}\": queued {}/{} tracks.", pl.name, queued, total);

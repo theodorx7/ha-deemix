@@ -555,7 +555,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
     // ── Unknown link ──
     bot.send_message(
         msg.chat.id,
-        "🤷 Unsupported link.\nSend me a link from Deezer, Spotify, or Apple Music.",
+        "🤷 Unsupported link.",
     )
     .await?;
     Ok(())

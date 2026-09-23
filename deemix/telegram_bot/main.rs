@@ -733,12 +733,7 @@ pub(crate) fn format_queue_outcome(label: &str, oc: &deemix::QueueOutcome) -> St
             Some(errid) => format!("❌ Error adding to queue: {} ({})", error, errid),
             None => format!("❌ Error adding to queue: {}", error),
         },
-        QueueOutcome::NothingAdded { ws_connected: true } => {
-            "⚠️ Nothing was added to the queue.".to_string()
-        }
-        QueueOutcome::NothingAdded { ws_connected: false } => {
-            "⚠️ Connection to Deemix lost - download queue status unknown.".to_string()
-        }
+        QueueOutcome::NothingAdded => "⚠️ Connection to Deemix lost.".to_string(),
     }
 }
 

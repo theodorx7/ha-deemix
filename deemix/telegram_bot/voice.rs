@@ -14,7 +14,7 @@ use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::types::{CallbackQuery, FileId, InlineKeyboardButton, InlineKeyboardMarkup};
 
-use crate::{BotState, MyDialogue, build_search_results, deemix, spotify, user_id_from_msg, users};
+use crate::{BotState, MyDialogue, build_search_results, deemix, format_queue_outcome, spotify, user_id_from_msg, users};
 
 /// Transcribe an OGG audio file using the configured Whisper backend.
 /// Returns the transcribed text or an error string.
@@ -292,11 +292,16 @@ pub(crate) async fn process_voice_recognize(
             // Step 1: Use Deezer URL directly from AudD if available
             if let Some(ref deezer_url) = rec.deezer_url {
                 log::info!("[recognize] Step 1: using AudD Deezer URL: {}", deezer_url);
-                match deemix::add_to_queue(&state, deezer_url).await {
-                    Ok(_) => { bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?; }
+                match deemix::add_to_queue_confirmed(&state, deezer_url, false).await {
+                    Ok(deemix::QueueOutcome::Added { .. }) => {
+                        bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?
+                    }
+                    Ok(oc) => {
+                        bot.edit_message_text(chat_id, status_msg_id, format_queue_outcome("Track", &oc)).await?
+                    }
                     Err(e) => {
                         log::info!("[recognize] Step 1 FAILED: add_to_queue error: {}", e);
-                        bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?;
+                        bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?
                     }
                 }
             } else {

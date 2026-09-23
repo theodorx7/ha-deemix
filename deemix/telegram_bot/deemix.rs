@@ -1,4 +1,4 @@
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
@@ -113,12 +113,11 @@ pub enum QueueOutcome {
     AlreadyInQueue { title: String, artist: String, size: u64, more: usize },
     /// Nothing added — the server rejected the link (WS queueError).
     Failed { error: String, errid: Option<String> },
-    /// result:true but no objects and no events: either there was nothing to generate (ws up) or the events were missed (ws down).
-    NothingAdded { ws_connected: bool },
+    /// result:true but no objects and no matching events — the actual outcome is undetermined.
+    NothingAdded,
 }
 
-/// addToQueue plus verification via the WS event buffer. `artist` must be true only for artist links — the only kind resolving to several download
-/// objects, where added / duplicate / failed can mix within one request.
+/// addToQueue plus verification via the WS event buffer. `artist` must be true only for artist links — the only kind resolving to several download objects, where added / duplicate / failed can mix within one request.
 pub async fn add_to_queue_confirmed(
     state: &Arc<BotState>,
     url: &str,
@@ -189,9 +188,7 @@ pub async fn add_to_queue_confirmed(
         }
     }
 
-    Ok(QueueOutcome::NothingAdded {
-        ws_connected: state.ws_connected.load(Ordering::Relaxed),
-    })
+    Ok(QueueOutcome::NothingAdded)
 }
 
 pub struct QueueStatus {
@@ -248,8 +245,7 @@ pub async fn clear_completed(state: &Arc<BotState>) -> Result<usize, String> {
     let resp = state.http.get(&url).send().await.map_err(|e| e.to_string())?;
     let data: Value = resp.json().await.map_err(|e| e.to_string())?;
 
-    // Items deemix's own removeFinishedDownloads handles (status == "completed")
-    // vs. ones we have to remove one by one (failed / withErrors / legacy builds).
+    // Items deemix's own removeFinishedDownloads handles (status == "completed") vs. ones we have to remove one by one (failed / withErrors / legacy builds).
     let mut completed = 0usize;
     let mut individual: Vec<String> = Vec::new();
     if let Some(queue) = data["queue"].as_object() {

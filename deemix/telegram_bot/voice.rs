@@ -294,14 +294,14 @@ pub(crate) async fn process_voice_recognize(
                 log::info!("[recognize] Step 1: using AudD Deezer URL: {}", deezer_url);
                 match deemix::add_to_queue_confirmed(&state, deezer_url, false).await {
                     Ok(deemix::QueueOutcome::Added { .. }) => {
-                        bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?
+                        bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?;
                     }
                     Ok(oc) => {
-                        bot.edit_message_text(chat_id, status_msg_id, format_queue_outcome("Track", &oc)).await?
+                        bot.edit_message_text(chat_id, status_msg_id, format_queue_outcome("Track", &oc)).await?;
                     }
                     Err(e) => {
                         log::info!("[recognize] Step 1 FAILED: add_to_queue error: {}", e);
-                        bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?
+                        bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?;
                     }
                 }
             } else {

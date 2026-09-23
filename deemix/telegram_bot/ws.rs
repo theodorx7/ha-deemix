@@ -6,7 +6,6 @@
 //! to observe `queueError` and `alreadyInQueue`, the two outcomes the HTTP
 //! addToQueue response cannot report; all other events are ignored.
 
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -21,9 +20,7 @@ const EVENT_TTL: Duration = Duration::from_secs(60);
 /// Hard cap so an event burst can never grow the buffer unbounded.
 const EVENT_CAP: usize = 128;
 
-/// Keep a WebSocket connection to deemix alive forever, buffering
-/// queueError / alreadyInQueue events into BotState. Reconnects with a
-/// simple backoff: 1s doubling up to 60s, reset after a successful connect.
+/// Keep a WebSocket connection to deemix alive forever, buffering queueError / alreadyInQueue events into BotState. Reconnects with a simple backoff: 1s doubling up to 60s, reset after a successful connect.
 pub(crate) async fn run_ws_listener(state: Arc<BotState>) {
     let ws_url = format!("{}/", state.config.deemix_url.replacen("http", "ws", 1));
     let mut delay = Duration::from_secs(1);
@@ -31,7 +28,6 @@ pub(crate) async fn run_ws_listener(state: Arc<BotState>) {
         match connect_async(ws_url.as_str()).await {
             Ok((mut stream, _)) => {
                 delay = Duration::from_secs(1);
-                state.ws_connected.store(true, Ordering::Relaxed);
                 log::info!("[ws] connected to {}", ws_url);
                 while let Some(msg) = stream.next().await {
                     match msg {
@@ -43,7 +39,6 @@ pub(crate) async fn run_ws_listener(state: Arc<BotState>) {
                         }
                     }
                 }
-                state.ws_connected.store(false, Ordering::Relaxed);
                 log::warn!("[ws] connection closed, reconnecting");
             }
             Err(e) => log::warn!("[ws] connect failed: {}", e),

@@ -6,9 +6,9 @@
 //! - `State` / `MyDialogue`: teloxide dialogue machine types.
 //! - `Command`: bot command enum used by dptree dispatching.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::env;
-use std::sync::Arc;
+use std::sync::{atomic::AtomicBool, Arc};
 
 use reqwest::Client;
 use teloxide::dispatching::dialogue::InMemStorage;
@@ -88,6 +88,22 @@ impl Config {
     }
 }
 
+// ── Deemix WS Events ─────────────────────────────────────────────────────────
+/// One deemix WebSocket event buffered by the ws listener, stamped on
+/// arrival. Only the two outcomes the HTTP addToQueue response cannot
+/// report are kept; see telegram_bot/ws.rs.
+pub struct WsEvent {
+    pub ts: std::time::Instant,
+    pub kind: WsEventKind,
+}
+
+pub enum WsEventKind {
+    /// The server rejected a link while generating download objects.
+    QueueError { link: Option<String>, error: String, errid: Option<String> },
+    /// The requested object is already in the download queue.
+    AlreadyInQueue { title: String, artist: String, size: u64 },
+}
+
 // ── Bot State ─────────────────────────────────────────────────────────────────
 #[derive(Clone)]
 pub struct BotState {
@@ -97,6 +113,10 @@ pub struct BotState {
     pub pending_voices: Arc<Mutex<HashMap<String, String>>>, // short_id -> file_id
     pub current_bitrate: Arc<Mutex<u8>>, // runtime-changeable bitrate
     pub current_arl: Arc<Mutex<String>>, // updated via /updatearl, used for auto re-login
+    /// Recent deemix WS events (queueError / alreadyInQueue), consumed by add_to_queue_confirmed.
+    pub ws_events: Arc<Mutex<VecDeque<WsEvent>>>,
+    /// Whether the ws listener is currently connected.
+    pub ws_connected: Arc<AtomicBool>,
 }
 
 impl BotState {
@@ -115,6 +135,8 @@ impl BotState {
             pending_voices: Arc::new(Mutex::new(HashMap::new())),
             current_bitrate: Arc::new(Mutex::new(default_bitrate)),
             current_arl: Arc::new(Mutex::new(default_arl)),
+            ws_events: Arc::new(Mutex::new(VecDeque::new())),
+            ws_connected: Arc::new(AtomicBool::new(false)),
         }
     }
 }

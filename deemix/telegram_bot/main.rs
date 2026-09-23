@@ -197,7 +197,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
 /menu — quick action buttons\n\
 /search — search for a track\n\
 /album — search for an album\n\
-/status — check deemix connection and queue\n\
+/status — check download queue\n\
 /clearqueue — clear completed downloads from queue\n\
 /settings — manage your personal preferences\n\
 /updatearl — update your Deezer ARL\n\n\
@@ -211,18 +211,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
         }
 
         Command::Status => {
-            match deemix::get_queue(&state).await {
-                Ok(q) => {
-                    let mut text = "✅ Deemix is reachable\n".to_string();
-                    if q.downloading > 0 { text.push_str(&format!("⬇️ Downloading: {}\n", q.downloading)); }
-                    if q.pending > 0 { text.push_str(&format!("⏳ Pending: {}\n", q.pending)); }
-                    if q.failed > 0 { text.push_str(&format!("❌ Failed: {}\n", q.failed)); }
-                    if q.done > 0 { text.push_str(&format!("✅ Completed (in queue): {}", q.done)); }
-                    if q.downloading == 0 && q.pending == 0 && q.done == 0 && q.failed == 0 { text.push_str("📭 Queue is empty"); }
-                    bot.send_message(msg.chat.id, text).await?;
-                }
-                Err(e) => { bot.send_message(msg.chat.id, format!("❌ Can't reach deemix: {}", e)).await?; }
-            }
+            do_status(&bot, &msg, &state).await?;
         }
 
         Command::Search => {
@@ -401,18 +390,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             return Ok(());
         }
         "📊 Check status" => {
-            match deemix::get_queue(&state).await {
-                Ok(q) => {
-                    let mut t = "✅ Deemix is reachable\n".to_string();
-                    if q.downloading > 0 { t.push_str(&format!("⬇️ Downloading: {}\n", q.downloading)); }
-                    if q.pending > 0 { t.push_str(&format!("⏳ Pending: {}\n", q.pending)); }
-                    if q.failed > 0 { t.push_str(&format!("❌ Failed: {}\n", q.failed)); }
-                    if q.done > 0 { t.push_str(&format!("✅ Completed: {}", q.done)); }
-                    if q.downloading == 0 && q.pending == 0 && q.done == 0 && q.failed == 0 { t.push_str("📭 Queue is empty"); }
-                    bot.send_message(msg.chat.id, t).await?;
-                }
-                Err(e) => { bot.send_message(msg.chat.id, format!("❌ Can't reach deemix: {}", e)).await?; }
-            }
+            do_status(&bot, &msg, &state).await?;
             return Ok(());
         }
         "🧹 Clear queue" => {
@@ -455,7 +433,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
 /menu — quick action buttons\n\
 /search — search for a track\n\
 /album — search for an album\n\
-/status — check deemix\n\
+/status — check download queue\n\
 /clearqueue — clear completed downloads from queue\n\
 /settings — your personal settings\n\
 /updatearl — update your Deezer ARL\n\n\
@@ -691,6 +669,24 @@ async fn do_search(bot: &Bot, msg: &Message, state: &Arc<BotState>, query: &str,
                 .await?;
         }
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Search failed: {}", e)).await?; }
+    }
+    Ok(())
+}
+
+/// Fetch queue counters from deemix and send them as a message. Shared by
+/// the /status command and the "📊 Check status" keyboard button.
+async fn do_status(bot: &Bot, msg: &Message, state: &Arc<BotState>) -> ResponseResult<()> {
+    match deemix::get_queue(state).await {
+        Ok(q) => {
+            let mut text = String::new();
+            if q.downloading > 0 { text.push_str(&format!("⬇️ Downloading: {}\n", q.downloading)); }
+            if q.pending > 0 { text.push_str(&format!("⏳ Pending: {}\n", q.pending)); }
+            if q.failed > 0 { text.push_str(&format!("❌ Failed: {}\n", q.failed)); }
+            if q.done > 0 { text.push_str(&format!("✅ Completed (in queue): {}", q.done)); }
+            if q.downloading == 0 && q.pending == 0 && q.done == 0 && q.failed == 0 { text.push_str("📭 Queue is empty"); }
+            bot.send_message(msg.chat.id, text).await?;
+        }
+        Err(e) => { bot.send_message(msg.chat.id, format!("❌ Failed to get queue status: {}", e)).await?; }
     }
     Ok(())
 }

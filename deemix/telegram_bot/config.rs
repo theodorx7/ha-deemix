@@ -8,7 +8,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::env;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::Arc;
 
 use reqwest::Client;
 use teloxide::dispatching::dialogue::InMemStorage;
@@ -115,8 +115,6 @@ pub struct BotState {
     pub current_arl: Arc<Mutex<String>>, // updated via /updatearl, used for auto re-login
     /// Recent deemix WS events (queueError / alreadyInQueue), consumed by add_to_queue_confirmed.
     pub ws_events: Arc<Mutex<VecDeque<WsEvent>>>,
-    /// Whether the ws listener is currently connected.
-    pub ws_connected: Arc<AtomicBool>,
 }
 
 impl BotState {
@@ -136,7 +134,6 @@ impl BotState {
             current_bitrate: Arc::new(Mutex::new(default_bitrate)),
             current_arl: Arc::new(Mutex::new(default_arl)),
             ws_events: Arc::new(Mutex::new(VecDeque::new())),
-            ws_connected: Arc::new(AtomicBool::new(false)),
         }
     }
 }

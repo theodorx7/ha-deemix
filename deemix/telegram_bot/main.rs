@@ -61,11 +61,12 @@ async fn main() {
     }
     let users = users::load(&config.users_file);
     let state = Arc::new(BotState::new(config, users));
-    // Background WebSocket listener for deemix queue events (queueError alreadyInQueue) — see telegram_bot/ws.rs
-    tokio::spawn(ws::run_ws_listener(Arc::clone(&state)));
 
     let token = env::var("TELEGRAM_TOKEN").expect("TELEGRAM_TOKEN must be set");
     let bot = Bot::new(token);
+
+    // Background WebSocket listener for deemix queue events (queueError / alreadyInQueue buffering + download-error forwarding) — see telegram_bot/ws.rs
+    tokio::spawn(ws::run_ws_listener(bot.clone(), Arc::clone(&state)));
 
     deemix::login(&state).await;
 
@@ -579,8 +580,9 @@ async fn handle_callback(
                 .map(|m| m.as_str().to_lowercase())
                 .unwrap_or_else(|| "item".to_string());
             let artist = kind == "artist";
+            let chat_id = msg.chat().id.0;
             bot.edit_message_text(msg.chat().id, msg.id(), format!("⏳ Queuing {}...", kind)).await?;
-            match deemix::add_to_queue_confirmed(&state, url, artist).await {
+            match deemix::add_to_queue_confirmed(&state, url, artist, chat_id).await {
                 Ok(oc) => { bot.edit_message_text(msg.chat().id, msg.id(), format_queue_outcome(&capitalize(&kind), &oc)).await?; }
                 Err(e) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed: {}", e)).await?; }
             }
@@ -630,9 +632,10 @@ async fn queue_url(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -
     };
     let kind = cap.get(1).map(|m| m.as_str().to_lowercase()).unwrap_or_else(|| "item".to_string());
     let artist = kind == "artist";
+    let chat_id = msg.chat.id.0;
     let sent = bot.send_message(msg.chat.id, format!("⏳ Queuing {}...", kind)).await?;
 
-    match deemix::add_to_queue_confirmed(state, url, artist).await {
+    match deemix::add_to_queue_confirmed(state, url, artist, chat_id).await {
         Ok(oc) => { bot.edit_message_text(msg.chat.id, sent.id, format_queue_outcome(&capitalize(&kind), &oc)).await?; }
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?; }
     }

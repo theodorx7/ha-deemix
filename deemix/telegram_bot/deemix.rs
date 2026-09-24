@@ -68,13 +68,34 @@ async fn relogin(state: &Arc<BotState>) -> Result<(), String> {
     login_arl(state, &arl).await.map(|_| ())
 }
 
+/// Translate the two errid codes the HTTP addToQueue response carries
+/// without a human-readable message; anything else passes through.
+fn readable_queue_error(errid: &str) -> String {
+    if errid.eq_ignore_ascii_case("notloggedin") {
+        "You need add ARL to download tracks.".to_string()
+    } else if errid.eq_ignore_ascii_case("cantstream") {
+        "Your account can't stream the track at the desired bitrate.".to_string()
+    } else {
+        errid.to_string()
+    }
+}
+
 pub async fn add_to_queue(state: &Arc<BotState>, url: &str) -> Result<Vec<Value>, String> {
-    match add_to_queue_once(state, url).await {
+    let result = match add_to_queue_once(state, url).await {
         Err(e) if e.eq_ignore_ascii_case("notloggedin") => {
-            relogin(state).await?;
-            add_to_queue_once(state, url).await
+            match relogin(state).await {
+                Ok(()) => add_to_queue_once(state, url).await,
+                Err(re) => {
+                    log::warn!("[queue] relogin failed: {}", re);
+                    Err("NotLoggedIn".to_string())
+                }
+            }
         }
         other => other,
+    };
+    match result {
+        Err(e) => Err(readable_queue_error(&e)),
+        ok => ok,
     }
 }
 
@@ -117,14 +138,33 @@ pub enum QueueOutcome {
     NothingAdded,
 }
 
+/// Registry hard cap — a full reset instead of unbounded growth; practically unreachable because entries are removed on finishDownload.
+const INITIATORS_CAP: usize = 256;
+
 /// addToQueue plus verification via the WS event buffer. `artist` must be true only for artist links — the only kind resolving to several download objects, where added / duplicate / failed can mix within one request.
 pub async fn add_to_queue_confirmed(
     state: &Arc<BotState>,
     url: &str,
     artist: bool,
+    chat_id: i64,
 ) -> Result<QueueOutcome, String> {
     let started = Instant::now();
     let added = add_to_queue(state, url).await?;
+
+    // Remember which chat requested each added object, so the ws listener can forward download errors to the initiator's chat only.
+    // WebUI-initiated and duplicate items are never registered and thus never forwarded.
+    if !added.is_empty() {
+        let mut reg = state.queue_initiators.lock().await;
+        if reg.len() >= INITIATORS_CAP {
+            log::warn!("[queue] initiator registry full — reset");
+            reg.clear();
+        }
+        for o in &added {
+            if let (Some(uuid), Some(title)) = (o["uuid"].as_str(), o["title"].as_str()) {
+                reg.insert(uuid.to_string(), (chat_id, title.to_string()));
+            }
+        }
+    }
 
     // The server emits its WS events before answering the HTTP request, so give the reader task a moment to buffer them before scanning.
     tokio::time::sleep(WS_GRACE).await;

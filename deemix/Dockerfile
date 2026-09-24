@@ -36,7 +36,6 @@ COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
 COPY webui-patch/index.html /app/packages/webui/index.html
 COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
 COPY webui-patch/src/client/utils/socket.ts /app/packages/webui/src/client/utils/socket.ts
-COPY webui-patch/src/server/main.ts /app/packages/webui/src/server/main.ts
 
 RUN apk add --no-cache npm && \
     cd /app/packages/webui && \

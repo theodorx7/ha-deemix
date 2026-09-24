@@ -94,12 +94,9 @@ COPY --from=deemix-builder /custom-services.d /custom-services.d
 COPY --from=deemix-builder /usr /usr
 
 # ENV from bambanah/deemix【turn5fetch0】
+ENV NODE_ENV=production
 ENV DEEMIX_DATA_DIR=/config/
 ENV DEEMIX_MUSIC_DIR=/downloads/
-ENV DEEMIX_SERVER_PORT=6595
-ENV DEEMIX_SINGLE_USER=true
-ENV DEEMIX_HOST=0.0.0.0
-ENV NODE_ENV=production
 ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
 
 COPY rootfs/ /

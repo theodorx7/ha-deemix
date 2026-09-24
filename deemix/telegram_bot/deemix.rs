@@ -287,22 +287,13 @@ pub async fn clear_completed(state: &Arc<BotState>) -> Result<usize, String> {
     let resp = state.http.get(&url).send().await.map_err(|e| e.to_string())?;
     let data: Value = resp.json().await.map_err(|e| e.to_string())?;
 
-    // Items deemix's own removeFinishedDownloads handles (status == "completed") vs. ones we have to remove one by one (failed / withErrors / legacy builds).
+    // Only successfully completed items are cleared (via the server's own removeFinishedDownloads). Failed / withErrors items stay in the queue for the user to review.
     let mut completed = 0usize;
-    let mut individual: Vec<String> = Vec::new();
     if let Some(queue) = data["queue"].as_object() {
         for (uuid, item) in queue {
             match item["status"].as_str() {
                 Some("completed") => completed += 1,
-                Some("failed") | Some("withErrors") => individual.push(uuid.clone()),
-                Some(_) => {}
-                None => {
-                    let downloaded = item["downloaded"].as_u64().unwrap_or(0);
-                    let size = item["size"].as_u64().unwrap_or(1);
-                    if downloaded >= size && size > 0 {
-                        individual.push(uuid.clone());
-                    }
-                }
+                _ => {}
             }
         }
     }
@@ -317,22 +308,6 @@ pub async fn clear_completed(state: &Arc<BotState>) -> Result<usize, String> {
         }
         cleared += completed;
     }
-
-    // removeFromQueue takes the uuid as a query parameter, not a JSON body
-    for uuid in &individual {
-        let url = format!("{}/api/removeFromQueue", state.config.deemix_url);
-        let ok = state.http
-            .post(&url)
-            .query(&[("uuid", uuid.as_str())])
-            .send()
-            .await
-            .map(|r| r.status().is_success())
-            .unwrap_or(false);
-        if ok {
-            cleared += 1;
-        }
-    }
-
     Ok(cleared)
 }
 

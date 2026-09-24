@@ -60,6 +60,15 @@ RUN apk add --no-cache npm && \
         /app/packages/webui/vite.config.mts
 # --- END LOCAL PATCH ---
 
+RUN rm -rf \
+    /app/packages/deemix/src \
+    /app/packages/deezer-sdk/src \
+    /app/packages/cli/src \
+    /app/packages/gui/src \
+    /app/pnpm-lock.yaml \
+    /app/turbo.json \
+    /app/pnpm-workspace.yaml
+
 COPY --from=telegram_bot-builder /telegram_bot /usr/local/bin/telegram_bot
 
 RUN chmod +x /custom-cont-init.d/* /usr/local/bin/telegram_bot && \

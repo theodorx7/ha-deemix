@@ -290,10 +290,9 @@ pub async fn clear_completed(state: &Arc<BotState>) -> Result<usize, String> {
     // Only successfully completed items are cleared (via the server's own removeFinishedDownloads). Failed / withErrors items stay in the queue for the user to review.
     let mut completed = 0usize;
     if let Some(queue) = data["queue"].as_object() {
-        for (uuid, item) in queue {
-            match item["status"].as_str() {
-                Some("completed") => completed += 1,
-                _ => {}
+        for item in queue.values() {
+            if item["status"].as_str() == Some("completed") {
+                completed += 1;
             }
         }
     }

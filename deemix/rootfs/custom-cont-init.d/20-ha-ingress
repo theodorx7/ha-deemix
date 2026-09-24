@@ -1,0 +1,87 @@
+#!/usr/bin/with-contenv bash
+# shellcheck disable=SC1008
+
+printf '[cont-init.d] Applying Home Assistant ingress patches\n'
+
+# Путь к собранному deemix в контейнере (согласно Dockerfile bambanah/deemix)
+DEEMIX_DIST="/app/dist"
+DEEMIX_PUBLIC="${DEEMIX_DIST}/public"
+
+if [ ! -d "${DEEMIX_PUBLIC}" ]; then
+    printf '[cont-init.d] WARNING: %s not found, skipping ingress patches\n' "${DEEMIX_PUBLIC}"
+    exit 0
+fi
+
+# ============================================================
+# ПАТЧ 1: index.html — вставить runtime-определение ingress base
+# ============================================================
+printf '[cont-init.d] Patching index.html for ingress base detection\n'
+
+INGRESS_JS='
+<script>
+(function() {
+    var path = window.location.pathname;
+    var m = path.match(/^(\/api\/hassio\/ingress\/[a-zA-Z0-9_]+)\//);
+    window.__HA_INGRESS_BASE__ = m ? m[1] + "/" : "/";
+    window.__HA_IS_INGRESS__ = !!m;
+})();
+</script>'
+
+# Вставить скрипт ПЕРЕД закрывающим </head>
+sed -i "s|</head>|${INGRESS_JS}</head>|" "${DEEMIX_PUBLIC}/index.html"
+
+# ============================================================
+# ПАТЧ 2: Собранный JS — динамический location.base
+# ============================================================
+printf '[cont-init.d] Patching client JS for dynamic base path\n'
+
+# Найти все JS файлы в assets и патчить location.base
+for jsfile in "${DEEMIX_PUBLIC}/assets/"*.js; do
+    [ -f "$jsfile" ] || continue
+    
+    # Заменить: location.base = "/"
+    # На: location.base = window.__HA_INGRESS_BASE__ || "/"
+    sed -i 's|location\.base[[:space:]]*=[[:space:]]*"/"|location.base = window.__HA_INGRESS_BASE__ \|\| "/"|g' "$jsfile"
+    
+    # Заменить: location.host + "/"
+    # На: location.host + (location.base || "/")
+    # (для WebSocket URL в socket.ts)
+    sed -i 's|location\.host[[:space:]]*+[[:space:]]*"/"|location.host + (location.base \|\| "/")|g' "$jsfile"
+done
+
+# ============================================================
+# ПАТЧ 3: Сервер — middleware для обработки ingress-путей
+# ============================================================
+printf '[cont-init.d] Patching server for ingress path handling\n'
+
+# Добавить middleware в начало dist/main.js
+# (после импортов, перед созданием Express app)
+cat > /tmp/ingress_middleware.js << 'MIDDLEWARE_EOF'
+
+// === HA INGRESS PATCH ===
+// Middleware: определяет ingress base и переписывает req.url для downstream
+const HA_INGRESS_PREFIX = '/api/hassio/ingress/';
+app.use(function(req, res, next) {
+    if (req.url.startsWith(HA_INGRESS_PREFIX)) {
+        // Убираем /api/hassio/ingress/{token} из начала URL
+        const parts = req.url.split('/');
+        // parts[0]='', parts[1]='api', parts[2]='hassio', parts[3]='ingress', parts[4]=token
+        if (parts.length >= 5) {
+            req.url = '/' + parts.slice(5).join('/');
+            req.originalUrl = req.url;
+        }
+    }
+    next();
+});
+// === END HA INGRESS PATCH ===
+
+MIDDLEWARE_EOF
+
+# Вставить middleware ПЕРЕД строкой "app.use(express.static"
+# (после всех маршрутов API, но перед static files)
+sed -i '/app\.use(express\.static/i\
+'"$(cat /tmp/ingress_middleware.js)"'' "${DEEMIX_DIST}/main.js"
+
+rm -f /tmp/ingress_middleware.js
+
+printf '[cont-init.d] Home Assistant ingress patches applied\n'

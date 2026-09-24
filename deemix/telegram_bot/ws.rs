@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use futures_util::StreamExt;
 use teloxide::types::ChatId;
-use teloxide::{Bot, Requester};
+use teloxide::{Bot, prelude::Requester};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 use crate::config::{WsEvent, WsEventKind};

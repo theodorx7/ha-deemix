@@ -41,6 +41,10 @@ COPY webui-patch/src/server/main.ts /app/packages/webui/src/server/main.ts
 RUN apk add --no-cache npm && \
     cd /app/packages/webui && \
     npm run build && \
+    npm install -g pnpm && \
+    cd /app && \
+    pnpm prune --prod && \
+    npm uninstall -g pnpm && \
     apk del npm && \
     rm -rf \
         /root/.npm \
@@ -68,23 +72,7 @@ RUN apk add --no-cache npm && \
         /app/pnpm-lock.yaml \
         /app/pnpm-workspace.yaml \
         /app/turbo.json \
-        /app/.npmrc \
-        /app/node_modules/.pnpm/typescript@* \
-        /app/node_modules/.pnpm/vite@* \
-        /app/node_modules/.pnpm/@vitejs+* \
-        /app/node_modules/.pnpm/vue-tsc@* \
-        /app/node_modules/.pnpm/turbo@* \
-        /app/node_modules/.pnpm/tsc-alias@* \
-        /app/node_modules/.pnpm/genversion@* \
-        /app/node_modules/.pnpm/nodemon@* \
-        /app/node_modules/.pnpm/tsx@* \
-        /app/node_modules/typescript \
-        /app/node_modules/vite \
-        /app/node_modules/@vitejs \
-        /app/node_modules/vue-tsc \
-        /app/node_modules/turbo \
-        /app/node_modules/tsc-alias \
-        /app/node_modules/genversion && \
+        /app/.npmrc && \
     find /app/packages -type f \
         \( -name "*.d.ts" \
         -o -name "*.d.ts.map" \

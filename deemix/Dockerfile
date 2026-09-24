@@ -27,80 +27,90 @@ RUN set -eux; \
     cp "target/${rust_target}/release/telegram_bot" /telegram_bot
 
 # ================================================================
-# Stage 2: Final App Image
+# Stage 2: Deemix Builder (rebuild + cleanup)
 # ================================================================
 
-FROM ghcr.io/bambanah/deemix:v4.7.0
+FROM ghcr.io/bambanah/deemix:v4.7.0 AS deemix-builder
 
-ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
-
-COPY rootfs/ /
-
-# --- LOCAL PATCH: ingress-compatible WebUI ---
 COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
 COPY webui-patch/index.html /app/packages/webui/index.html
 COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
 COPY webui-patch/src/client/utils/socket.ts /app/packages/webui/src/client/utils/socket.ts
 COPY webui-patch/src/server/main.ts /app/packages/webui/src/server/main.ts
+
 RUN apk add --no-cache npm && \
     cd /app/packages/webui && \
     npm run build && \
-    apk del npm
-# --- END LOCAL PATCH ---
-
-# --- CLEANUP: remove everything not needed for runtime ---
-RUN rm -rf \
-    # Build tool caches
-    /root/.npm \
-    /tmp/* \
-    /var/cache/apk/* \
-    \
-    # Unused package (CLI not used, only webui server runs)
-    /app/packages/cli \
-    \
-    # Source files (already compiled to dist/)
-    /app/packages/webui/src \
-    /app/packages/webui/public \
-    /app/packages/deemix/src \
-    /app/packages/deezer-sdk/src \
-    \
-    # Build configs (not needed after compilation)
-    /app/packages/webui/index.html \
-    /app/packages/webui/vite.config.mts \
-    /app/packages/webui/postcss.config.cjs \
-    /app/packages/webui/tailwind.config.mjs \
-    /app/packages/webui/tsconfig.json \
-    /app/packages/webui/tsconfig.config.json \
-    /app/packages/webui/vitest.config.ts \
-    \
-    # Monorepo metadata (not needed for runtime)
-    /app/package.json \
-    /app/pnpm-lock.yaml \
-    /app/pnpm-workspace.yaml \
-    /app/turbo.json \
-    /app/.npmrc \
-    \
-    # Documentation
-    /app/packages/webui/README.md \
-    /app/packages/webui/CHANGELOG.md \
-    /app/packages/deemix/README.md \
-    /app/packages/deemix/CHANGELOG.md \
-    /app/packages/deezer-sdk/README.md \
-    /app/packages/deezer-sdk/CHANGELOG.md \
-    && \
-    # TypeScript declarations + source maps (not needed for runtime)
+    apk del npm && \
+    rm -rf \
+        /root/.npm \
+        /tmp/* \
+        /var/cache/apk/* \
+        /app/packages/cli \
+        /app/packages/webui/src \
+        /app/packages/webui/public \
+        /app/packages/webui/index.html \
+        /app/packages/webui/vite.config.mts \
+        /app/packages/webui/postcss.config.cjs \
+        /app/packages/webui/tailwind.config.mjs \
+        /app/packages/webui/tsconfig.json \
+        /app/packages/webui/tsconfig.config.json \
+        /app/packages/webui/vitest.config.ts \
+        /app/packages/webui/README.md \
+        /app/packages/webui/CHANGELOG.md \
+        /app/packages/deemix/src \
+        /app/packages/deemix/README.md \
+        /app/packages/deemix/CHANGELOG.md \
+        /app/packages/deezer-sdk/src \
+        /app/packages/deezer-sdk/README.md \
+        /app/packages/deezer-sdk/CHANGELOG.md \
+        /app/package.json \
+        /app/pnpm-lock.yaml \
+        /app/pnpm-workspace.yaml \
+        /app/turbo.json \
+        /app/.npmrc && \
     find /app/packages -type f \
         \( -name "*.d.ts" \
         -o -name "*.d.ts.map" \
         -o -name "*.map" \
         -o -name "*.tsbuildinfo" \) \
         -delete
-# --- END CLEANUP ---
+
+# ================================================================
+# Stage 3: Final Image (clean base + only what's needed)
+# ================================================================
+
+FROM ghcr.io/linuxserver/baseimage-alpine:3.24
+
+# Install Node.js (like in the original bambanah/deemix【turn5fetch0】)
+RUN apk add --no-cache nodejs>=24.0.0
+
+# Copy the entire cleaned /app (preserves pnpm symlinks)
+COPY --from=deemix-builder /app /app
+
+# S6 structure deemix (services, init scripts, usr)
+COPY --from=deemix-builder /custom-cont-init.d /custom-cont-init.d
+COPY --from=deemix-builder /custom-services.d /custom-services.d
+COPY --from=deemix-builder /usr /usr
+
+# ENV from bambanah/deemix【turn5fetch0】
+ENV DEEMIX_DATA_DIR=/config/
+ENV DEEMIX_MUSIC_DIR=/downloads/
+ENV DEEMIX_SERVER_PORT=6595
+ENV DEEMIX_SINGLE_USER=true
+ENV DEEMIX_HOST=0.0.0.0
+ENV NODE_ENV=production
+ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
+
+COPY rootfs/ /
 
 COPY --from=telegram_bot-builder /telegram_bot /usr/local/bin/telegram_bot
 
 RUN chmod +x /custom-cont-init.d/* /usr/local/bin/telegram_bot && \
-    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \;
+    find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && \
+    find /custom-services.d/ -type f -name "run" -exec chmod +x {} \;
+
+EXPOSE 6595
 
 LABEL \
     io.hass.name="Deemix with telegram bot" \

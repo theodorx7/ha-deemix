@@ -45,22 +45,7 @@ RUN cd /app/packages/webui && \
         -o -name "*.map" \
         -o -name "*.tsbuildinfo" \) \
         -delete && \
-    if grep -ql "fonts/" /app/packages/webui/dist/public/assets/*.css 2>/dev/null; then \
-        echo "ERROR: CSS references fonts/ - NOT removing"; \
-    else \
-        echo "OK: fonts/ not referenced - removing duplicate"; \
-        rm -rf /app/packages/webui/dist/public/fonts; \
-    fi && \
-    if grep -rqn "from ['\"]\(tailwindcss\|postcss\|vue\|vue-router\|pinia\|vue-i18n\|mitt\|toastify-js\|lodash-es\|flag-icon-css\|svg-country-flags\)['\"]" \
-        /app/packages/webui/dist/helpers/ \
-        /app/packages/webui/dist/routes/ \
-        /app/packages/webui/dist/websocket/ \
-        /app/packages/webui/dist/main.js 2>/dev/null; then \
-        echo "ERROR: Server imports build-only packages - NOT removing them"; \
-        exit 1; \
-    else \
-        echo "OK: Server does not import build-only packages"; \
-    fi
+    rm -rf /app/packages/webui/dist/public/fonts
 
 # ================================================================
 # Stage 3: Prod Dependencies

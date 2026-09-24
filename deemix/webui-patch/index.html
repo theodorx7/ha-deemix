@@ -25,11 +25,11 @@
 		<script>
 			// --- LOCAL PATCH: runtime base path for Home Assistant Ingress ---
 			// Original: no such script; location.base was hardcoded in src/client/main.ts.
-			// Reason: under Ingress the UI is served from /api/hassio/ingress/<token>/;
+			// Reason: under Ingress the UI is served from /api/hassio_ingress/<token>/;
 			// the base must be computed before the app bundle loads (module scripts
 			// are deferred, so this inline script always runs first).
 			(function () {
-				var m = window.location.pathname.match(/^\/api\/hassio\/ingress\/[^/]+/);
+				var m = window.location.pathname.match(/^\/api\/hassio_ingress\/[^/]+/);
 				location.base = m ? m[0] + "/" : "/";
 			})();
 			// --- END LOCAL PATCH ---

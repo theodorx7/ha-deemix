@@ -27,7 +27,7 @@ RUN set -eux; \
     cp "target/${rust_target}/release/telegram_bot" /telegram_bot
 
 # ================================================================
-# Stage 2: Deemix Client Rebuild (только сборка, БЕЗ удаления package.json)
+# Stage 2: Deemix Client Rebuild
 # ================================================================
 
 FROM ghcr.io/bambanah/deemix:v4.7.0 AS deemix-builder
@@ -44,14 +44,14 @@ RUN cd /app/packages/webui && \
         -o -name "*.d.ts.map" \
         -o -name "*.map" \
         -o -name "*.tsbuildinfo" \) \
-        -delete
-    && if grep -ql "fonts/" /app/packages/webui/dist/public/assets/*.css 2>/dev/null; then \
+        -delete && \
+    if grep -ql "fonts/" /app/packages/webui/dist/public/assets/*.css 2>/dev/null; then \
         echo "ERROR: CSS references fonts/ - NOT removing"; \
     else \
         echo "OK: fonts/ not referenced - removing duplicate"; \
         rm -rf /app/packages/webui/dist/public/fonts; \
-    fi
-    && if grep -rqn "from ['\"]\(tailwindcss\|postcss\|vue\|vue-router\|pinia\|vue-i18n\|mitt\|toastify-js\|lodash-es\|flag-icon-css\|svg-country-flags\)" \
+    fi && \
+    if grep -rqn "from ['\"]\(tailwindcss\|postcss\|vue\|vue-router\|pinia\|vue-i18n\|mitt\|toastify-js\|lodash-es\|flag-icon-css\|svg-country-flags\)['\"]" \
         /app/packages/webui/dist/helpers/ \
         /app/packages/webui/dist/routes/ \
         /app/packages/webui/dist/websocket/ \
@@ -63,7 +63,7 @@ RUN cd /app/packages/webui && \
     fi
 
 # ================================================================
-# Stage 3: Prod Dependencies (идентично оригиналу — corepack + prod deps)
+# Stage 3: Prod Dependencies
 # ================================================================
 
 FROM node:24-alpine AS prod-deps
@@ -102,7 +102,6 @@ COPY --from=deemix-builder /app/packages/deezer-sdk/dist /app/packages/deezer-sd
 # S6 сервис deemix
 COPY --from=deemix-builder /custom-services.d /custom-services.d
 
-# Критичные ENV
 ENV NODE_ENV=production
 ENV DEEMIX_DATA_DIR=/config/
 ENV DEEMIX_MUSIC_DIR=/downloads/

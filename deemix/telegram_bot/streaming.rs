@@ -131,13 +131,19 @@ async fn queue_playlist(
         } else {
             format!("{} — {}", track.title, track.artist)
         };
-        match link {
             Some(l) => match deemix::add_to_queue_confirmed(state, &l, false, msg.chat.id.0).await {
                 Ok(deemix::QueueOutcome::Added { .. }) => queued += 1,
                 Ok(deemix::QueueOutcome::AlreadyInQueue { .. }) => already += 1,
                 Ok(oc) => {
                     log::warn!("[playlist] not queued {:?}: {:?}", label, oc);
                     not_found.push(label);
+                }
+                Err(e) if e == deemix::ARL_ERROR => {
+                    // No valid ARL — every remaining track would fail the same way; stop the loop instead of hammering the server.
+                    bot.edit_message_text(msg.chat.id, status_id, format!("❌ Failed to queue: {}", e))
+                        .reply_markup(crate::add_arl_keyboard())
+                        .await?;
+                    return Ok(());
                 }
                 Err(e) => {
                     log::warn!("[playlist] failed to queue {:?}: {}", label, e);

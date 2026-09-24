@@ -43,7 +43,8 @@ RUN apk add --no-cache npm && \
     npm run build && \
     npm install -g pnpm && \
     cd /app && \
-    pnpm prune --prod && \
+    rm -rf node_modules packages/*/node_modules && \
+    pnpm install --prod && \
     npm uninstall -g pnpm && \
     apk del npm && \
     rm -rf \

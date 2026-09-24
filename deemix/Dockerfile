@@ -26,10 +26,6 @@ RUN set -eux; \
     cargo build --release --target "${rust_target}"; \
     cp "target/${rust_target}/release/telegram_bot" /telegram_bot
 
-# ================================================================
-# Stage 2: Deemix Builder (rebuild + cleanup)
-# ================================================================
-
 FROM ghcr.io/bambanah/deemix:v4.7.0 AS deemix-builder
 
 COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
@@ -41,45 +37,27 @@ COPY webui-patch/src/server/main.ts /app/packages/webui/src/server/main.ts
 RUN apk add --no-cache npm && \
     cd /app/packages/webui && \
     npm run build && \
-    npm install -g pnpm && \
-    cd /app && \
-    rm -rf node_modules packages/*/node_modules && \
+    apk del npm && \
+    rm -rf /root/.npm /tmp/* /var/cache/apk/*
+
+# ================================================================
+# Stage 2b: Prod deps (чистый Node.js + ТОЛЬКО production deps)
+# ================================================================
+
+FROM node:24-alpine AS prod-deps
+WORKDIR /app
+
+COPY --from=deemix-builder /app/package.json ./
+COPY --from=deemix-builder /app/pnpm-lock.yaml ./
+COPY --from=deemix-builder /app/pnpm-workspace.yaml ./
+COPY --from=deemix-builder /app/packages/webui/package.json packages/webui/
+COPY --from=deemix-builder /app/packages/deemix/package.json packages/deemix/
+COPY --from=deemix-builder /app/packages/deezer-sdk/package.json packages/deezer-sdk/
+
+RUN npm install -g pnpm && \
     pnpm install --prod && \
     npm uninstall -g pnpm && \
-    apk del npm && \
-    rm -rf \
-        /root/.npm \
-        /tmp/* \
-        /var/cache/apk/* \
-        /app/packages/cli \
-        /app/packages/webui/src \
-        /app/packages/webui/public \
-        /app/packages/webui/index.html \
-        /app/packages/webui/vite.config.mts \
-        /app/packages/webui/postcss.config.cjs \
-        /app/packages/webui/tailwind.config.mjs \
-        /app/packages/webui/tsconfig.json \
-        /app/packages/webui/tsconfig.config.json \
-        /app/packages/webui/vitest.config.ts \
-        /app/packages/webui/README.md \
-        /app/packages/webui/CHANGELOG.md \
-        /app/packages/deemix/src \
-        /app/packages/deemix/README.md \
-        /app/packages/deemix/CHANGELOG.md \
-        /app/packages/deezer-sdk/src \
-        /app/packages/deezer-sdk/README.md \
-        /app/packages/deezer-sdk/CHANGELOG.md \
-        /app/package.json \
-        /app/pnpm-lock.yaml \
-        /app/pnpm-workspace.yaml \
-        /app/turbo.json \
-        /app/.npmrc && \
-    find /app/packages -type f \
-        \( -name "*.d.ts" \
-        -o -name "*.d.ts.map" \
-        -o -name "*.map" \
-        -o -name "*.tsbuildinfo" \) \
-        -delete
+    rm -rf /root/.npm
 
 # ================================================================
 # Stage 3: Final Image (clean base + only what's needed)
@@ -87,16 +65,22 @@ RUN apk add --no-cache npm && \
 
 FROM ghcr.io/linuxserver/baseimage-alpine:3.24
 
-# Install Node.js (like in the original bambanah/deemix【turn5fetch0】)
 RUN apk add --no-cache nodejs>=24.0.0
 
-# Copy the entire cleaned /app (preserves pnpm symlinks)
-COPY --from=deemix-builder /app /app
+# Prod-only node_modules из Stage 2b
+COPY --from=prod-deps /app/node_modules /app/node_modules
 
-# S6 structure deemix (services, init scripts, usr)
+COPY --from=deemix-builder /app/packages/webui/dist /app/packages/webui/dist
+COPY --from=deemix-builder /app/packages/webui/package.json /app/packages/webui/package.json
+COPY --from=deemix-builder /app/packages/deemix/dist /app/packages/deemix/dist
+COPY --from=deemix-builder /app/packages/deemix/package.json /app/packages/deemix/package.json
+COPY --from=deemix-builder /app/packages/deezer-sdk/dist /app/packages/deezer-sdk/dist
+COPY --from=deemix-builder /app/packages/deezer-sdk/package.json /app/packages/deezer-sdk/package.json
+
+# S6 сервис deemix
 COPY --from=deemix-builder /custom-services.d /custom-services.d
 
-# ENV from bambanah/deemix【turn5fetch0】
+# Критичные ENV
 ENV NODE_ENV=production
 ENV DEEMIX_DATA_DIR=/config/
 ENV DEEMIX_MUSIC_DIR=/downloads/

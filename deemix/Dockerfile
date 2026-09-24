@@ -82,13 +82,11 @@ RUN apk add --no-cache nodejs>=24.0.0
 
 # Prod-only node_modules из Stage 2
 COPY --from=prod-deps /app/node_modules /app/node_modules
+COPY --from=prod-deps /app/packages /app/packages
 
 COPY --from=deemix-builder /app/packages/webui/dist /app/packages/webui/dist
-COPY --from=deemix-builder /app/packages/webui/package.json /app/packages/webui/package.json
 COPY --from=deemix-builder /app/packages/deemix/dist /app/packages/deemix/dist
-COPY --from=deemix-builder /app/packages/deemix/package.json /app/packages/deemix/package.json
 COPY --from=deemix-builder /app/packages/deezer-sdk/dist /app/packages/deezer-sdk/dist
-COPY --from=deemix-builder /app/packages/deezer-sdk/package.json /app/packages/deezer-sdk/package.json
 
 # S6 сервис deemix
 COPY --from=deemix-builder /custom-services.d /custom-services.d

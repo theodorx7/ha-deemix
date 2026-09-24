@@ -37,7 +37,7 @@ class CustomSocket extends WebSocket {
 export const socket = new CustomSocket(
 	// --- LOCAL PATCH: websocket URL via runtime base path ---
 	// Original: (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/"
-	// Reason: under Ingress the websocket must go through /api/hassio_ingress/<token>/,
+	// Reason: under Ingress the websocket must go through /api/hassio/ingress/<token>/,
 	// otherwise it connects to the Home Assistant root. location.base is computed
 	// in index.html before this module is evaluated (module scripts are deferred).
 	(location.protocol === "https:" ? "wss://" : "ws://") +

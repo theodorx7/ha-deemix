@@ -41,10 +41,13 @@ RUN apk add --no-cache npm && \
     rm -rf /root/.npm /tmp/* /var/cache/apk/*
 
 # ================================================================
-# Stage 2b: Prod deps (чистый Node.js + ТОЛЬКО production deps)
+# Stage 2b: Prod deps (идентично оригиналу — corepack + prod deps)
 # ================================================================
 
 FROM node:24-alpine AS prod-deps
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME/bin:$PATH"
+RUN corepack enable
 WORKDIR /app
 
 COPY --from=deemix-builder /app/package.json ./
@@ -54,10 +57,8 @@ COPY --from=deemix-builder /app/packages/webui/package.json packages/webui/
 COPY --from=deemix-builder /app/packages/deemix/package.json packages/deemix/
 COPY --from=deemix-builder /app/packages/deezer-sdk/package.json packages/deezer-sdk/
 
-RUN npm install -g pnpm && \
-    pnpm install --prod && \
-    npm uninstall -g pnpm && \
-    rm -rf /root/.npm
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));delete p.scripts.prepare;fs.writeFileSync('package.json',JSON.stringify(p,null,2))" && \
+    pnpm install --prod
 
 # ================================================================
 # Stage 3: Final Image (clean base + only what's needed)

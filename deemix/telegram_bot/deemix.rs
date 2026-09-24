@@ -68,11 +68,13 @@ async fn relogin(state: &Arc<BotState>) -> Result<(), String> {
     login_arl(state, &arl).await.map(|_| ())
 }
 
-/// Translate the two errid codes the HTTP addToQueue response carries
-/// without a human-readable message; anything else passes through.
+/// The user-facing message for a missing/invalid ARL — shown with an inline "Add ARL" button attached by the queue handlers (main.rs, voice.rs).
+pub(crate) const ARL_ERROR: &str = "You need add ARL to download tracks.";
+
+/// Translate the two errid codes the HTTP addToQueue response carries without a human-readable message; anything else passes through.
 fn readable_queue_error(errid: &str) -> String {
     if errid.eq_ignore_ascii_case("notloggedin") {
-        "You need add ARL to download tracks.".to_string()
+        ARL_ERROR.to_string()
     } else if errid.eq_ignore_ascii_case("cantstream") {
         "Your account can't stream the track at the desired bitrate.".to_string()
     } else {

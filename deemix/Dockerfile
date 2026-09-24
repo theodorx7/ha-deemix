@@ -26,6 +26,10 @@ RUN set -eux; \
     cargo build --release --target "${rust_target}"; \
     cp "target/${rust_target}/release/telegram_bot" /telegram_bot
 
+# ================================================================
+# Stage 2a: Deemix Builder (только сборка, БЕЗ удаления package.json)
+# ================================================================
+
 FROM ghcr.io/bambanah/deemix:v4.7.0 AS deemix-builder
 
 COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
@@ -38,10 +42,16 @@ RUN apk add --no-cache npm && \
     cd /app/packages/webui && \
     npm run build && \
     apk del npm && \
-    rm -rf /root/.npm /tmp/* /var/cache/apk/*
+    rm -rf /root/.npm /tmp/* /var/cache/apk/* && \
+    find /app/packages -type f \
+        \( -name "*.d.ts" \
+        -o -name "*.d.ts.map" \
+        -o -name "*.map" \
+        -o -name "*.tsbuildinfo" \) \
+        -delete
 
 # ================================================================
-# Stage 2b: Prod deps (идентично оригиналу — corepack + prod deps)
+# Stage 2: Prod deps (идентично оригиналу — corepack + prod deps)
 # ================================================================
 
 FROM node:24-alpine AS prod-deps
@@ -68,7 +78,7 @@ FROM ghcr.io/linuxserver/baseimage-alpine:3.24
 
 RUN apk add --no-cache nodejs>=24.0.0
 
-# Prod-only node_modules из Stage 2b
+# Prod-only node_modules из Stage 2
 COPY --from=prod-deps /app/node_modules /app/node_modules
 
 COPY --from=deemix-builder /app/packages/webui/dist /app/packages/webui/dist

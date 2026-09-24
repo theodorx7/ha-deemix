@@ -131,6 +131,7 @@ async fn queue_playlist(
         } else {
             format!("{} — {}", track.title, track.artist)
         };
+        match link {
             Some(l) => match deemix::add_to_queue_confirmed(state, &l, false, msg.chat.id.0).await {
                 Ok(deemix::QueueOutcome::Added { .. }) => queued += 1,
                 Ok(deemix::QueueOutcome::AlreadyInQueue { .. }) => already += 1,

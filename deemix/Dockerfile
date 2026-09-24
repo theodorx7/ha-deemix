@@ -68,7 +68,23 @@ RUN apk add --no-cache npm && \
         /app/pnpm-lock.yaml \
         /app/pnpm-workspace.yaml \
         /app/turbo.json \
-        /app/.npmrc && \
+        /app/.npmrc \
+        /app/node_modules/.pnpm/typescript@* \
+        /app/node_modules/.pnpm/vite@* \
+        /app/node_modules/.pnpm/@vitejs+* \
+        /app/node_modules/.pnpm/vue-tsc@* \
+        /app/node_modules/.pnpm/turbo@* \
+        /app/node_modules/.pnpm/tsc-alias@* \
+        /app/node_modules/.pnpm/genversion@* \
+        /app/node_modules/.pnpm/nodemon@* \
+        /app/node_modules/.pnpm/tsx@* \
+        /app/node_modules/typescript \
+        /app/node_modules/vite \
+        /app/node_modules/@vitejs \
+        /app/node_modules/vue-tsc \
+        /app/node_modules/turbo \
+        /app/node_modules/tsc-alias \
+        /app/node_modules/genversion && \
     find /app/packages -type f \
         \( -name "*.d.ts" \
         -o -name "*.d.ts.map" \
@@ -89,9 +105,7 @@ RUN apk add --no-cache nodejs>=24.0.0
 COPY --from=deemix-builder /app /app
 
 # S6 structure deemix (services, init scripts, usr)
-COPY --from=deemix-builder /custom-cont-init.d /custom-cont-init.d
 COPY --from=deemix-builder /custom-services.d /custom-services.d
-COPY --from=deemix-builder /usr /usr
 
 # ENV from bambanah/deemix【turn5fetch0】
 ENV NODE_ENV=production
@@ -106,8 +120,6 @@ COPY --from=telegram_bot-builder /telegram_bot /usr/local/bin/telegram_bot
 RUN chmod +x /custom-cont-init.d/* /usr/local/bin/telegram_bot && \
     find /etc/services.d/ -type f -name "run" -exec chmod +x {} \; && \
     find /custom-services.d/ -type f -name "run" -exec chmod +x {} \;
-
-EXPOSE 6595
 
 LABEL \
     io.hass.name="Deemix with telegram bot" \

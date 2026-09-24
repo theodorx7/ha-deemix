@@ -78,6 +78,26 @@ if (process.env.NODE_ENV === "development") {
     app.use(morgan("dev"));
 }
 
+// --- LOCAL PATCH: HA Ingress middleware ---
+// Original: no such middleware; routes and APIs were registered directly.
+// Reason: under Ingress, requests arrive at /api/hassio/ingress/{token}/...
+// but API handlers (registerApis) and express.static expect root-absolute
+// paths. This middleware strips the ingress prefix so both API routes and
+// static files work correctly. It must be placed BEFORE registerApis so
+// API handlers receive a clean req.url without the ingress prefix.
+// Direct access (http://host:6595/) is unaffected: the URL doesn't match
+// the ingress pattern and passes through unchanged.
+app.use((req, res, next) => {
+    if (req.url.startsWith("/api/hassio/ingress/")) {
+        const parts = req.url.split("/");
+        if (parts.length >= 5) {
+            req.url = "/" + parts.slice(5).join("/");
+        }
+    }
+    next();
+});
+// --- END LOCAL PATCH ---
+
 /* === Routes === */
 app.use("/", indexRouter);
 
@@ -97,25 +117,6 @@ const wss = new WebSocketServer({ server });
 
 if (process.env.NODE_ENV === "production") {
     const publicPath = join(dirname(fileURLToPath(import.meta.url)), "public");
-
-    // --- LOCAL PATCH: HA Ingress middleware ---
-    // Original: no such middleware.
-    // Reason: under Ingress, requests arrive at /api/hassio/ingress/{token}/...
-    // but express.static expects root-absolute paths. This middleware strips
-    // the ingress prefix so static files and SPA fallback work correctly.
-    // Direct access (http://host:6595/) is unaffected: the URL doesn't match
-    // the ingress pattern and passes through unchanged.
-    app.use((req, res, next) => {
-        if (req.url.startsWith("/api/hassio/ingress/")) {
-            const parts = req.url.split("/");
-            if (parts.length >= 5) {
-                req.url = "/" + parts.slice(5).join("/");
-                req.originalUrl = req.url;
-            }
-        }
-        next();
-    });
-    // --- END LOCAL PATCH ---
 
     app.use(express.static(publicPath));
     app.get("*", (_, res) => {

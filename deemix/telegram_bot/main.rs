@@ -564,6 +564,17 @@ async fn handle_callback(
         return Ok(());
     }
 
+    if data == "add_arl" {
+        if let Some(msg) = &q.message {
+            let dialogue: MyDialogue = Dialogue::new(storage, msg.chat().id);
+            let _ = dialogue.update(State::AwaitingArl).await;
+            bot.edit_message_text(msg.chat().id, msg.id(), "Please send your new Deezer ARL:")
+                .reply_markup(arl_cancel_keyboard())
+                .await?;
+        }
+        return Ok(());
+    }
+    
     if data == "cancel_arl" {
         if let Some(msg) = &q.message {
             let dialogue: MyDialogue = Dialogue::new(storage, msg.chat().id);
@@ -584,7 +595,11 @@ async fn handle_callback(
             bot.edit_message_text(msg.chat().id, msg.id(), format!("⏳ Queuing {}...", kind)).await?;
             match deemix::add_to_queue_confirmed(&state, url, artist, chat_id).await {
                 Ok(oc) => { bot.edit_message_text(msg.chat().id, msg.id(), format_queue_outcome(&capitalize(&kind), &oc)).await?; }
-                Err(e) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed: {}", e)).await?; }
+                Err(e) => {
+                    let req = bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed: {}", e));
+                    let req = if e == deemix::ARL_ERROR { req.reply_markup(add_arl_keyboard()) } else { req };
+                    req.await?;
+                }
             }
         }
     }
@@ -637,7 +652,11 @@ async fn queue_url(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -
 
     match deemix::add_to_queue_confirmed(state, url, artist, chat_id).await {
         Ok(oc) => { bot.edit_message_text(msg.chat.id, sent.id, format_queue_outcome(&capitalize(&kind), &oc)).await?; }
-        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e)).await?; }
+        Err(e) => {
+            let req = bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to queue: {}", e));
+            let req = if e == deemix::ARL_ERROR { req.reply_markup(add_arl_keyboard()) } else { req };
+            req.await?;
+        }
     }
     Ok(())
 }
@@ -710,6 +729,11 @@ async fn handle_updatearl(bot: &Bot, msg: &Message, state: &Arc<BotState>, arl: 
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ ARL rejected by deemix: {}", e)).await?; }
     }
     Ok(())
+}
+
+/// Inline keyboard with the single "Add ARL" button, attached to queue-failure messages caused by a missing/invalid ARL.
+fn add_arl_keyboard() -> InlineKeyboardMarkup {
+    InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback("➕ Add ARL", "add_arl")]])
 }
 
 /// Render a verified addToQueue outcome as the user-facing message. `label` is the capitalized request kind ("Track", "Album", ...).

@@ -37,12 +37,27 @@ ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
 COPY rootfs/ /
 
 # --- LOCAL PATCH: ingress-compatible WebUI ---
+# Replaces source files, then rebuilds both server (tsc) and client (vite).
+# npm is installed temporarily (Alpine's nodejs package doesn't include it),
+# used for the build, then removed along with all caches to keep the final image clean.
 COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
 COPY webui-patch/index.html /app/packages/webui/index.html
 COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
 COPY webui-patch/src/client/utils/socket.ts /app/packages/webui/src/client/utils/socket.ts
 COPY webui-patch/src/server/main.ts /app/packages/webui/src/server/main.ts
-RUN cd /app/packages/webui && npm run build
+RUN apk add --no-cache npm && \
+    cd /app/packages/webui && \
+    npm run build && \
+    apk del npm && \
+    rm -rf \
+        /root/.npm \
+        /tmp/* \
+        /var/cache/apk/* \
+        /app/packages/webui/*.tsbuildinfo \
+        /app/packages/webui/src/client \
+        /app/packages/webui/src/server \
+        /app/packages/webui/index.html \
+        /app/packages/webui/vite.config.mts
 # --- END LOCAL PATCH ---
 
 COPY --from=telegram_bot-builder /telegram_bot /usr/local/bin/telegram_bot
@@ -59,4 +74,3 @@ LABEL \
     org.opencontainers.image.description="High-quality music downloader with a telegram bot: remote, chat-based control for automated downloads." \
     org.opencontainers.image.source="https://github.com/theodorx7/ha-deemix" \
     org.opencontainers.image.licenses="GPL-3.0"
-    

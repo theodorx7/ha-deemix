@@ -301,7 +301,9 @@ pub(crate) async fn process_voice_recognize(
                     }
                     Err(e) => {
                         log::info!("[recognize] Step 1 FAILED: add_to_queue error: {}", e);
-                        bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e)).await?;
+                        let req = bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e));
+                        let req = if e == deemix::ARL_ERROR { req.reply_markup(crate::add_arl_keyboard()) } else { req };
+                        req.await?;
                     }
                 }
             } else {

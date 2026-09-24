@@ -2,7 +2,7 @@
 //!
 //! - `Config`: per-run static configuration assembled from /config files
 //!   and ENV variables.
-//! - `BotState`: shared runtime state (users db, pending voices, bitrate, ARL).
+//! - `BotState`: shared runtime state (users db, pending voices, bitrate, ARL, ws events).
 //! - `State` / `MyDialogue`: teloxide dialogue machine types.
 //! - `Command`: bot command enum used by dptree dispatching.
 

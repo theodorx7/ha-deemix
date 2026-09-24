@@ -36,12 +36,13 @@ ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
 
 COPY rootfs/ /
 
-# --- LOCAL PATCH: ingress-compatible WebUI client ---
+# --- LOCAL PATCH: ingress-compatible WebUI ---
 COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
 COPY webui-patch/index.html /app/packages/webui/index.html
 COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
 COPY webui-patch/src/client/utils/socket.ts /app/packages/webui/src/client/utils/socket.ts
-RUN cd /app/packages/webui && node /app/node_modules/vite/bin/vite.js build
+COPY webui-patch/src/server/main.ts /app/packages/webui/src/server/main.ts
+RUN cd /app/packages/webui && npm run build
 # --- END LOCAL PATCH ---
 
 COPY --from=telegram_bot-builder /telegram_bot /usr/local/bin/telegram_bot

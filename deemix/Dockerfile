@@ -37,9 +37,6 @@ ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
 COPY rootfs/ /
 
 # --- LOCAL PATCH: ingress-compatible WebUI ---
-# Replaces source files, then rebuilds both server (tsc) and client (vite).
-# npm is installed temporarily (Alpine's nodejs package doesn't include it),
-# used for the build, then removed along with all caches to keep the final image clean.
 COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
 COPY webui-patch/index.html /app/packages/webui/index.html
 COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
@@ -48,26 +45,57 @@ COPY webui-patch/src/server/main.ts /app/packages/webui/src/server/main.ts
 RUN apk add --no-cache npm && \
     cd /app/packages/webui && \
     npm run build && \
-    apk del npm && \
-    rm -rf \
-        /root/.npm \
-        /tmp/* \
-        /var/cache/apk/* \
-        /app/packages/webui/*.tsbuildinfo \
-        /app/packages/webui/src/client \
-        /app/packages/webui/src/server \
-        /app/packages/webui/index.html \
-        /app/packages/webui/vite.config.mts
+    apk del npm
 # --- END LOCAL PATCH ---
 
+# --- CLEANUP: remove everything not needed for runtime ---
 RUN rm -rf \
+    # Build tool caches
+    /root/.npm \
+    /tmp/* \
+    /var/cache/apk/* \
+    \
+    # Unused package (CLI not used, only webui server runs)
+    /app/packages/cli \
+    \
+    # Source files (already compiled to dist/)
+    /app/packages/webui/src \
+    /app/packages/webui/public \
     /app/packages/deemix/src \
     /app/packages/deezer-sdk/src \
-    /app/packages/cli/src \
-    /app/packages/gui/src \
+    \
+    # Build configs (not needed after compilation)
+    /app/packages/webui/index.html \
+    /app/packages/webui/vite.config.mts \
+    /app/packages/webui/postcss.config.cjs \
+    /app/packages/webui/tailwind.config.mjs \
+    /app/packages/webui/tsconfig.json \
+    /app/packages/webui/tsconfig.config.json \
+    /app/packages/webui/vitest.config.ts \
+    \
+    # Monorepo metadata (not needed for runtime)
+    /app/package.json \
     /app/pnpm-lock.yaml \
+    /app/pnpm-workspace.yaml \
     /app/turbo.json \
-    /app/pnpm-workspace.yaml
+    /app/.npmrc \
+    \
+    # Documentation
+    /app/packages/webui/README.md \
+    /app/packages/webui/CHANGELOG.md \
+    /app/packages/deemix/README.md \
+    /app/packages/deemix/CHANGELOG.md \
+    /app/packages/deezer-sdk/README.md \
+    /app/packages/deezer-sdk/CHANGELOG.md \
+    && \
+    # TypeScript declarations + source maps (not needed for runtime)
+    find /app/packages -type f \
+        \( -name "*.d.ts" \
+        -o -name "*.d.ts.map" \
+        -o -name "*.map" \
+        -o -name "*.tsbuildinfo" \) \
+        -delete
+# --- END CLEANUP ---
 
 COPY --from=telegram_bot-builder /telegram_bot /usr/local/bin/telegram_bot
 

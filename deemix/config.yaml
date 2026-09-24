@@ -1,6 +1,6 @@
 name: "Deemix with telegram bot"
 slug: "deemix"
-version: "4.7.0"
+version: "4.7.0-0"
 description: "High-quality music downloader with a telegram bot: remote, chat-based control for automated downloads."
 url: "https://github.com/theodorx7/ha-deemix/"
 image: "ghcr.io/theodorx7/ha-deemix"
@@ -20,7 +20,11 @@ ports:
   6595/tcp: 6595
 ports_description:
   6595/tcp: "Deemix WebUI"
-webui: "http://[HOST]:[PORT:6595]"
+ingress: true
+panel_admin: false
+ingress_port: 6595
+panel_title: Deemix
+panel_icon: "mdi:album"
 
 options:
   env_vars: []

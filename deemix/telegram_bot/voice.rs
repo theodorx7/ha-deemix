@@ -292,7 +292,7 @@ pub(crate) async fn process_voice_recognize(
             // Step 1: Use Deezer URL directly from AudD if available
             if let Some(ref deezer_url) = rec.deezer_url {
                 log::info!("[recognize] Step 1: using AudD Deezer URL: {}", deezer_url);
-                match deemix::add_to_queue_confirmed(&state, deezer_url, false).await {
+                match deemix::add_to_queue_confirmed(&state, deezer_url, false, chat_id.0).await {
                     Ok(deemix::QueueOutcome::Added { .. }) => {
                         bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?;
                     }

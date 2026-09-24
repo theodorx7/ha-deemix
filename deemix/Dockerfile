@@ -27,7 +27,7 @@ RUN set -eux; \
     cp "target/${rust_target}/release/telegram_bot" /telegram_bot
 
 # ================================================================
-# Stage 2a: Deemix Builder (только сборка, БЕЗ удаления package.json)
+# Stage 2: Deemix Client Rebuild (только сборка, БЕЗ удаления package.json)
 # ================================================================
 
 FROM ghcr.io/bambanah/deemix:v4.7.0 AS deemix-builder
@@ -37,20 +37,33 @@ COPY webui-patch/index.html /app/packages/webui/index.html
 COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
 COPY webui-patch/src/client/utils/socket.ts /app/packages/webui/src/client/utils/socket.ts
 
-RUN apk add --no-cache npm && \
-    cd /app/packages/webui && \
-    npm run build && \
-    apk del npm && \
-    rm -rf /root/.npm /tmp/* /var/cache/apk/* && \
+RUN cd /app/packages/webui && \
+    node /app/node_modules/vite/bin/vite.js build && \
     find /app/packages -type f \
         \( -name "*.d.ts" \
         -o -name "*.d.ts.map" \
         -o -name "*.map" \
         -o -name "*.tsbuildinfo" \) \
         -delete
+    && if grep -ql "fonts/" /app/packages/webui/dist/public/assets/*.css 2>/dev/null; then \
+        echo "ERROR: CSS references fonts/ - NOT removing"; \
+    else \
+        echo "OK: fonts/ not referenced - removing duplicate"; \
+        rm -rf /app/packages/webui/dist/public/fonts; \
+    fi
+    && if grep -rqn "from ['\"]\(tailwindcss\|postcss\|vue\|vue-router\|pinia\|vue-i18n\|mitt\|toastify-js\|lodash-es\|flag-icon-css\|svg-country-flags\)" \
+        /app/packages/webui/dist/helpers/ \
+        /app/packages/webui/dist/routes/ \
+        /app/packages/webui/dist/websocket/ \
+        /app/packages/webui/dist/main.js 2>/dev/null; then \
+        echo "ERROR: Server imports build-only packages - NOT removing them"; \
+        exit 1; \
+    else \
+        echo "OK: Server does not import build-only packages"; \
+    fi
 
 # ================================================================
-# Stage 2: Prod deps (идентично оригиналу — corepack + prod deps)
+# Stage 3: Prod Dependencies (идентично оригиналу — corepack + prod deps)
 # ================================================================
 
 FROM node:24-alpine AS prod-deps
@@ -67,12 +80,11 @@ COPY --from=deemix-builder /app/packages/deemix/package.json packages/deemix/
 COPY --from=deemix-builder /app/packages/deezer-sdk/package.json packages/deezer-sdk/
 
 RUN apk add --no-cache python3 make g++ && \
-    node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));delete p.scripts.prepare;fs.writeFileSync('package.json',JSON.stringify(p,null,2))" && \
-    pnpm install --prod && \
-    apk del python3 make g++
+    node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));delete p.scripts.prepare;fs.writeFileSync('package.json',JSON.stringify(p,null,2));const w=JSON.parse(fs.readFileSync('packages/webui/package.json'));['tailwindcss','postcss','vue','vue-router','pinia','vue-i18n','mitt','toastify-js','lodash-es','flag-icon-css','svg-country-flags'].forEach(pkg=>delete w.dependencies[pkg]);fs.writeFileSync('packages/webui/package.json',JSON.stringify(w,null,2))" && \
+    pnpm install --prod
 
 # ================================================================
-# Stage 3: Final Image (clean base + only what's needed)
+# Stage 4: Final Image (clean base + only what's needed)
 # ================================================================
 
 FROM ghcr.io/linuxserver/baseimage-alpine:3.24
@@ -105,10 +117,6 @@ RUN chmod +x /custom-cont-init.d/* /usr/local/bin/telegram_bot && \
     find /custom-services.d/ -type f -name "run" -exec chmod +x {} \;
 
 LABEL \
-    io.hass.name="Deemix with telegram bot" \
-    io.hass.description="High-quality music downloader with a telegram bot: remote, chat-based control for automated downloads." \
-    io.hass.type="app" \
-    io.hass.url="https://github.com/theodorx7/ha-deemix" \
     org.opencontainers.image.title="Home Assistant App: Deemix with telegram bot" \
     org.opencontainers.image.description="High-quality music downloader with a telegram bot: remote, chat-based control for automated downloads." \
     org.opencontainers.image.source="https://github.com/theodorx7/ha-deemix" \

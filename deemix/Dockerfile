@@ -67,8 +67,10 @@ COPY --from=deemix-builder /app/packages/webui/package.json packages/webui/
 COPY --from=deemix-builder /app/packages/deemix/package.json packages/deemix/
 COPY --from=deemix-builder /app/packages/deezer-sdk/package.json packages/deezer-sdk/
 
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));delete p.scripts.prepare;fs.writeFileSync('package.json',JSON.stringify(p,null,2))" && \
-    pnpm install --prod
+RUN apk add --no-cache python3 make g++ && \
+    node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));delete p.scripts.prepare;fs.writeFileSync('package.json',JSON.stringify(p,null,2))" && \
+    pnpm install --prod && \
+    apk del python3 make g++
 
 # ================================================================
 # Stage 3: Final Image (clean base + only what's needed)

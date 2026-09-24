@@ -1,3 +1,8 @@
+//! Spotify link handling: track/album metadata and playlist scanning.
+//!
+//! Resolves via the public embed page __NEXT_DATA__ JSON — no API key
+//! required; oEmbed is the title-only fallback.
+
 use std::sync::LazyLock;
 
 use regex::Regex;

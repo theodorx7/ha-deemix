@@ -61,8 +61,7 @@ impl Config {
                 .unwrap_or_default(),
             users_file: env::var("USERS_FILE")
                 .unwrap_or_else(|_| "/config/telegram_bot/users.json".to_string()),
-            acrcloud_host: env::var("ACRCLOUD_HOST")
-                .unwrap_or_else(|_| "identify-eu-west-1.acrcloud.com".to_string()),
+            acrcloud_host: env::var("ACRCLOUD_HOST").unwrap_or_default(),
             acrcloud_access_key: env::var("ACRCLOUD_ACCESS_KEY").unwrap_or_default(),
             acrcloud_secret_key: env::var("ACRCLOUD_SECRET_KEY").unwrap_or_default(),
             openai_api_key: env::var("OPENAI_API_KEY").unwrap_or_default(),

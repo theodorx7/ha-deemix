@@ -83,6 +83,9 @@ pub async fn recognize(
     if !cfg.acrcloud_enabled() {
         return Err("Song recognition is not configured.".to_string());
     }
+    if cfg.acrcloud_host.is_empty() {
+        return Err("ACRCloud Host is not configured. Set it in the add-on options.".to_string());
+    }
     if audio_bytes.len() >= 5 * 1024 * 1024 {
         return Err("Voice note too long for song recognition.".to_string());
     }

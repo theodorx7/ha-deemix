@@ -19,14 +19,6 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": fileURLToPath(new URL("src/client", import.meta.url)),
-			// --- LOCAL PATCH: bundle public font assets instead of root-absolute URLs ---
-			// Original: no "/fonts/" alias.
-			// Reason: vendor CSS references fonts as url("/fonts/..."); URLs pointing
-			// into publicDir are kept root-absolute by Vite and would 404 under
-			// Ingress. The alias resolves them to real files, so Vite emits them
-			// as bundled assets with relative URLs (see base: "./").
-			"/fonts/": fileURLToPath(new URL("public/fonts/", import.meta.url)),
-			// --- END LOCAL PATCH ---
 		},
 	},
 	plugins: [vue(), svgLoader()],

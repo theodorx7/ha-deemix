@@ -36,7 +36,7 @@ COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
 COPY webui-patch/index.html /app/packages/webui/index.html
 COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
 COPY webui-patch/src/client/utils/socket.ts /app/packages/webui/src/client/utils/socket.ts
-# COPY webui-patch/src/client/styles/css/global.css /app/packages/webui/src/client/styles/css/global.css
+COPY webui-patch/src/client/styles/css/global.css /app/packages/webui/src/client/styles/css/global.css
 
 RUN cd /app/packages/webui && \
     node /app/node_modules/vite/bin/vite.js build && \
@@ -45,7 +45,7 @@ RUN cd /app/packages/webui && \
         -o -name "*.d.ts.map" \
         -o -name "*.map" \
         -o -name "*.tsbuildinfo" \) \
-        -delete && \
+        -delete
 
 # ================================================================
 # Stage 3: Prod Dependencies

@@ -18,8 +18,6 @@ map:
   - share:rw
 ports:
   6595/tcp: 6595
-ports_description:
-  6595/tcp: "Deemix WebUI"
 ingress: true
 ingress_port: 6595
 panel_title: Deemix

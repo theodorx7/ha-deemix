@@ -1,0 +1,265 @@
+@import "./helpers.css";
+@import "./icons.css";
+@import "./normalize.css";
+@import "./tables.css";
+@import "./typography.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	font-size: 16px;
+
+	--main-scroll: theme("colors.grayscale.300");
+	--panels-scroll: hsl(180, 2%, 17%);
+	--toast-background: hsla(240, 12%, 16%, 0.85);
+	--toast-secondary: hsla(240, 12%, 16%, 0.15);
+	--toast-text: hsla(0, 0%, 100%, 0.85);
+
+	--primary-color: hsl(210, 100%, 52%); /* will remove variable */
+	--primary-text: theme("colors.grayscale.870"); /* will remove variable */
+	--secondary-color: hsl(46, 100%, 57%); /* will remove variable */
+}
+
+:root[data-theme="light"] {
+	--main-background: theme("colors.white");
+	--secondary-background: theme("colors.grayscale.930");
+	--foreground: theme("colors.grayscale.200");
+	--panels-background: hsl(216, 4%, 78%);
+
+	--table-bg: theme("colors.white");
+	--table-zebra: theme("colors.grayscale.900");
+	--table-highlight: theme("colors.grayscale.840");
+}
+
+:root[data-theme="dark"] {
+	--main-background: hsl(240, 10%, 8%);
+	--secondary-background: hsl(240, 12%, 16%); /* e.g. search bar bg */
+	--foreground: theme(
+		"colors.grayscale.930"
+	); /* primary text + icons in main + search */
+	--panels-background: hsl(240, 15%, 12%); /* panel left + right bg */
+
+	--table-bg: hsl(240, 10%, 8%); /* e.g. results table bg 1st row */
+	--table-zebra: hsl(240, 15%, 11%); /* e.g. results table bg 2nd alternate */
+	--table-highlight: hsl(
+		240,
+		10%,
+		22%
+	); /* e.g. hover bg color on table selection */
+}
+
+:root[data-theme="purple"] {
+	--main-background: hsl(261, 74%, 6%);
+	--secondary-background: hsl(257, 61%, 10%);
+	--foreground: theme("colors.grayscale.930");
+	--panels-background: hsl(257, 70%, 9%);
+
+	--table-bg: hsl(261, 74%, 6%);
+	--table-zebra: hsl(257, 61%, 10%);
+	--table-highlight: hsl(257, 66%, 27%);
+}
+
+@layer base {
+	input[type="text"],
+	input[type="password"],
+	input[type="number"],
+	select {
+		border-radius: 4px;
+		background-color: var(--secondary-background);
+		padding: 0 1rem;
+		width: 100%;
+		min-height: 3rem;
+		line-height: 3rem;
+		color: var(--foreground);
+	}
+
+	input[type="text"],
+	input[type="password"],
+	input[type="number"] {
+		padding: 0 16px;
+	}
+
+	input[type="checkbox"] {
+		display: inline-block;
+		position: relative;
+		opacity: 0.5;
+		margin: 3px;
+		border: 2px solid gray;
+		border-radius: 2px;
+		background-color: none;
+		padding: 7px;
+	}
+
+	input[type="checkbox"]:checked {
+		opacity: 1;
+		border-width: 0;
+		background-color: var(--primary-color);
+		background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' height='18' viewBox='3 3 18 18' width='18'%3E%3Cpath fill='%23ffffff' d='M 10,17 5,12 6.41,10.59 10,14.17 17.59,6.58 19,8 Z'/%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3C/svg%3E");
+		background-position: center center;
+		padding: 9px;
+		color: var(--primary-text);
+	}
+
+	select {
+		background-clip: border-box;
+		background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24' viewBox='0 0 24 24' width='24'%3E%3Cpath style='fill:gray;fill-opacity:0.5' d='M7 10l5 5 5-5z'/%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3C/svg%3E");
+		background-position: calc(100% - 8px) center;
+		background-repeat: no-repeat;
+		background-size: 24px;
+		padding-right: 40px;
+	}
+
+	a {
+		color: dodgerblue;
+	}
+}
+
+@layer components {
+	/* Button */
+	.btn {
+		@apply text-grayscale-900 relative h-8 rounded border border-solid border-transparent px-2 py-0 text-sm font-semibold uppercase;
+
+		font-family: inherit;
+		transition: transform 50ms ease-in-out;
+	}
+
+	.btn:active {
+		transform: scale(0.98);
+	}
+
+	.btn[disabled] {
+		@apply cursor-not-allowed bg-gray-600 text-gray-300 opacity-75;
+	}
+
+	.btn-only-icon {
+		@apply flex w-12 items-center justify-center px-1 py-0;
+
+		min-width: 24px;
+	}
+
+	.btn-primary {
+		@apply bg-primary;
+	}
+	.btn-flat {
+		background-color: rgba(0, 0, 0, 0);
+		color: var(--foreground);
+	}
+
+	.btn-primary:hover {
+		@apply border-foreground bg-blue-600;
+	}
+
+	/* Section tabs */
+	.section-tabs {
+		@apply mb-6 mt-4 flex cursor-pointer list-none;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.section-tabs__tab {
+		@apply border-foreground bg-background-main flex-1 rounded-b border-t-4 p-3 text-center text-xl capitalize;
+		white-space: nowrap;
+		min-width: max-content;
+	}
+
+	@media (max-width: 767px) {
+		.section-tabs__tab {
+			flex: none;
+			padding-left: 1rem;
+			padding-right: 1rem;
+		}
+	}
+
+	.section-tabs__tab.active {
+		@apply text-primary border-primary bg-background-main;
+	}
+
+	.section-tabs__tab:hover {
+		@apply text-primary border-primary bg-background-secondary;
+		@apply bg-opacity-25;
+	}
+
+	/* Image header */
+	.image-header header {
+		@apply rounded-t-lg bg-cover px-6 pb-2 pt-56;
+
+		background-position: 0% 35%;
+	}
+
+	/* Fixed footer */
+	.fixed-footer footer {
+		@apply sticky bottom-0 mt-6 flex h-16 w-full flex-row items-center justify-end;
+		padding: 0 1rem;
+	}
+
+	@media (max-width: 767px) {
+		.fixed-footer footer {
+			flex-direction: column;
+			height: auto;
+			gap: 0.5rem;
+			align-items: stretch;
+			/* Break out of 95% container */
+			width: 100vw;
+			margin-left: -2.63vw;
+			padding: 0.75rem 2.63vw;
+			padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+			box-sizing: border-box;
+		}
+
+		.fixed-footer footer > * {
+			width: 100%;
+			flex-grow: 0;
+		}
+
+		.fixed-footer footer .btn {
+			width: 100%;
+			padding: 0.875rem 1rem;
+			height: auto;
+			font-size: 1rem;
+			justify-content: center;
+			display: flex;
+			border-radius: 0.5rem;
+		}
+
+		.fixed-footer footer .btn-flat {
+			background: transparent;
+			border: 1px solid rgba(255, 255, 255, 0.3);
+		}
+
+		.fixed-footer footer .btn .material-icons {
+			display: none;
+		}
+	}
+
+	/* Release grid */
+	.release-grid {
+		@apply grid gap-4;
+
+		grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+	}
+
+	/* --- LOCAL PATCH: hide main scrollbar on touch devices --- */
+	/* Original: no such block (main::-webkit-scrollbar { width: 10px } is defined
+	   in TheContent.vue and applies everywhere). */
+	/* Reason: the Home Assistant Android app (WebView) draws the main scroll
+	   container's scrollbar as a classic space-taking 10px strip, shrinking the
+	   content area below the two-column threshold of .release-grid; touch
+	   browsers draw overlay scrollbars instead, so hiding it on coarse-pointer
+	   devices restores the exact rendering width of touch browsers. Desktop
+	   (fine pointer) is not affected. */
+	@media (pointer: coarse) {
+		main::-webkit-scrollbar {
+			width: 0;
+		}
+	}
+	/* --- END LOCAL PATCH --- */
+
+	.tag {
+		padding: 3px;
+		background-color: var(--primary-color);
+		font-size: 10px;
+		border-radius: 3px;
+	}
+}

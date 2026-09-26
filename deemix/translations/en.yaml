@@ -38,11 +38,22 @@ configuration:
     description: >-
       Prevent users from changing the download quality
       via the Telegram bot /settings command.
-  audd_api_key:
-    name: AudD API Key
+  acrcloud_host:
+    name: ACRCloud Host
     description: >-
-      API key from audd.io for recognizing songs from voice messages.
-      Optional; enables the song recognition feature.
+      Recognition host of your ACRCloud project (shown in the ACRCloud
+      console, e.g. identify-eu-west-1.acrcloud.com).
+  acrcloud_access_key:
+    name: ACRCloud Access Key
+    description: >-
+      Access key of your ACRCloud Audio & Video Recognition project.
+      Required together with the Access Secret; enables the song
+      recognition feature.
+  acrcloud_access_secret:
+    name: ACRCloud Access Secret
+    description: >-
+      Access secret of your ACRCloud Audio & Video Recognition project.
+      Required together with the Access Key.
   openai_api_key:
     name: OpenAI API Key
     description: >-

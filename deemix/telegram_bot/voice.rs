@@ -5,9 +5,12 @@
 //!   2. Local compatible   — set WHISPER_URL (e.g. faster-whisper-server)
 //!   3. Disabled           — leave both empty
 //!
-//! AudD song recognition  — set AUDD_API_KEY
+//! ACRCloud song recognition  — set ACRCLOUD_ACCESS_KEY/SECRET
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use hmac::{Hmac, KeyInit, Mac};
 use reqwest::multipart;
+use sha1::Sha1;
 
 use std::sync::Arc;
 
@@ -61,7 +64,7 @@ pub async fn transcribe(
     Ok(text.trim().to_string())
 }
 
-/// Recognition result from AudD.
+/// Recognition result from ACRCloud.
 /// Prefer deezer_url → spotify_url (metadata refinement) → text search, in that order.
 pub struct RecognitionResult {
     pub title: String,
@@ -70,62 +73,92 @@ pub struct RecognitionResult {
     pub spotify_url: Option<String>,
 }
 
-/// Identify a song from audio bytes using the AudD API.
+/// Identify a song from audio bytes using the ACRCloud Identification API.
 /// Returns RecognitionResult or an error string.
 pub async fn recognize(
     http: &reqwest::Client,
     audio_bytes: Vec<u8>,
-    audd_key: &str,
+    cfg: &crate::config::Config,
 ) -> Result<RecognitionResult, String> {
-    if audd_key.is_empty() {
+    if !cfg.acrcloud_enabled() {
         return Err("Song recognition is not configured.".to_string());
     }
+    if audio_bytes.len() >= 5 * 1024 * 1024 {
+        return Err("Voice note too long for song recognition.".to_string());
+    }
 
+    // signature = base64(HMAC-SHA1(string_to_sign, access_secret))
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    let string_to_sign = format!("POST\n/v1/identify\n{}\naudio\n1\n{}", cfg.acrcloud_access_key, ts);
+    let mut mac = Hmac::<Sha1>::new_from_slice(cfg.acrcloud_access_secret.as_bytes())
+        .map_err(|e| e.to_string())?;
+    mac.update(string_to_sign.as_bytes());
+    let signature = STANDARD.encode(mac.finalize().into_bytes());
+
+    let sample_bytes = audio_bytes.len();
     let part = multipart::Part::bytes(audio_bytes)
         .file_name("audio.ogg")
         .mime_str("audio/ogg")
         .map_err(|e| e.to_string())?;
 
     let form = multipart::Form::new()
-        .part("file", part)
-        .text("api_token", audd_key.to_string())
-        .text("return", "deezer,spotify");
+        .part("sample", part)
+        .text("access_key", cfg.acrcloud_access_key.clone())
+        .text("sample_bytes", sample_bytes.to_string())
+        .text("timestamp", ts.to_string())
+        .text("signature", signature)
+        .text("data_type", "audio")
+        .text("signature_version", "1");
 
     let resp = http
-        .post("https://api.audd.io/")
+        .post(format!("https://{}/v1/identify", cfg.acrcloud_host))
         .multipart(form)
         .send()
         .await
         .map_err(|e| e.to_string())?;
 
-    let data: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-
-    if data["status"] != "success" {
-        return Err("AudD could not identify the song.".to_string());
+    if !resp.status().is_success() {
+        return Err(format!("ACRCloud API error: HTTP {}", resp.status()));
     }
 
-    let result = &data["result"];
-    if result.is_null() {
+    let data: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+
+    let code = data["status"]["code"].as_i64().unwrap_or(-1);
+    if code != 0 {
+        return Err(if code == 1001 {
+            "Song not recognized. Try a longer clip.".to_string()
+        } else {
+            format!(
+                "ACRCloud API error ({}): {}",
+                code,
+                data["status"]["msg"].as_str().unwrap_or("unknown")
+            )
+        });
+    }
+
+    let music = &data["metadata"]["music"][0];
+    let title = music["title"].as_str().unwrap_or("").to_string();
+    let artist = music["artists"]
+        .as_array()
+        .map(|a| a.iter().filter_map(|x| x["name"].as_str()).collect::<Vec<_>>().join(", "))
+        .unwrap_or_default();
+
+    if title.is_empty() {
         return Err("Song not recognized. Try a longer clip.".to_string());
     }
 
-    let title = result["title"].as_str().unwrap_or("").to_string();
-    let artist = result["artist"].as_str().unwrap_or("").to_string();
-
-    if title.is_empty() {
-        return Err("Song not recognized.".to_string());
-    }
-
-    let deezer_url = result["deezer"]["link"]
+    let deezer_url = music["external_metadata"]["deezer"]["track"]["id"]
         .as_str()
-        .map(|s| s.to_string());
-
-    let spotify_url = result["spotify"]["external_urls"]["spotify"]
+        .map(|id| format!("https://www.deezer.com/track/{}", id));
+    let spotify_url = music["external_metadata"]["spotify"]["track"]["id"]
         .as_str()
-        .map(|s| s.to_string());
+        .map(|id| format!("https://open.spotify.com/track/{}", id));
 
     log::info!(
-        "AudD recognized: title={:?} artist={:?} deezer_url={:?} spotify_url={:?}",
+        "ACRCloud recognized: title={:?} artist={:?} deezer_url={:?} spotify_url={:?}",
         title, artist, deezer_url, spotify_url
     );
 
@@ -145,10 +178,10 @@ pub(crate) async fn handle_voice_message(
         None => return Ok(()),
     };
     let user_settings = users::get_or_create(&state.users, user_id_from_msg(&msg));
-    let audd_on = state.config.audd_enabled() && user_settings.song_recognition;
+    let recog_on = state.config.acrcloud_enabled() && user_settings.song_recognition;
     let whisper_on = state.config.whisper_enabled() && user_settings.voice_search;
 
-    if !audd_on && !whisper_on {
+    if !recog_on && !whisper_on {
         bot.send_message(msg.chat.id, "⚠️ Voice features are not configured or disabled. Use /settings to manage them.").await?;
         return Ok(());
     }
@@ -168,7 +201,7 @@ pub(crate) async fn handle_voice_message(
             format!("vt:{}", short_id),
         )]);
     }
-    if audd_on {
+    if recog_on {
         buttons.push(vec![teloxide::types::InlineKeyboardButton::callback(
             "🎵 Recognize the song",
             format!("vr:{}", short_id),
@@ -277,7 +310,7 @@ pub(crate) async fn process_voice_transcribe(
 }
 
 /// Core song recognition logic shared by dialogue receiver and callback handler.
-/// Implements the cascade: AudD Deezer URL → Spotify metadata → text search.
+/// Implements the cascade: Deezer URL → Spotify metadata → text search.
 pub(crate) async fn process_voice_recognize(
     bot: &Bot,
     chat_id: teloxide::types::ChatId,
@@ -285,13 +318,13 @@ pub(crate) async fn process_voice_recognize(
     audio_bytes: Vec<u8>,
     state: &Arc<BotState>,
 ) -> ResponseResult<()> {
-    match recognize(&state.http, audio_bytes, &state.config.audd_api_key).await {
+    match recognize(&state.http, audio_bytes, &state.config).await {
         Ok(rec) => {
             let query = format!("{} {}", rec.title, rec.artist).replace('&', " ").split_whitespace().collect::<Vec<&str>>().join(" ");
             bot.edit_message_text(chat_id, status_msg_id, format!("🎵 Found: {} — {}\nQueuing...", rec.title, rec.artist)).await?;
-            // Step 1: Use Deezer URL directly from AudD if available
+            // Step 1: Use the Deezer URL from the recognition result if available
             if let Some(ref deezer_url) = rec.deezer_url {
-                log::info!("[recognize] Step 1: using AudD Deezer URL: {}", deezer_url);
+                log::info!("[recognize] Step 1: using Deezer URL: {}", deezer_url);
                 match deemix::add_to_queue_confirmed(&state, deezer_url, false, chat_id.0).await {
                     Ok(deemix::QueueOutcome::Added { .. }) => {
                         bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?;
@@ -312,10 +345,10 @@ pub(crate) async fn process_voice_recognize(
                     log::info!("[recognize] Step 2: resolving Spotify URL: {}", sp_url);
                     match spotify::resolve(sp_url).await {
                         Some(meta) => { log::info!("[recognize] Step 2: Spotify query: {:?}", meta.query); meta.query }
-                        None => { log::info!("[recognize] Step 2: Spotify resolve failed, falling back to AudD text: {:?}", query); query.clone() }
+                        None => { log::info!("[recognize] Step 2: Spotify resolve failed, falling back to recognition text: {:?}", query); query.clone() }
                     }
                 } else {
-                    log::info!("[recognize] Step 2: no Spotify URL, using AudD text: {:?}", query);
+                    log::info!("[recognize] Step 2: no Spotify URL, using recognition text: {:?}", query);
                     query.clone()
                 };
                 log::info!("[recognize] Step 2: Deezer text search query: {:?}", search_query);

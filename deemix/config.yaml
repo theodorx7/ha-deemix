@@ -32,7 +32,9 @@ options:
   whitelist_enabled: true
   whitelist_ids: ""
   deemix_bitrate_lock: false
-  audd_api_key: ""
+  acrcloud_host: "identify-eu-west-1.acrcloud.com"
+  acrcloud_access_key: ""
+  acrcloud_access_secret: ""
   openai_api_key: ""
   whisper_url: ""
 schema:
@@ -44,6 +46,8 @@ schema:
   whitelist_enabled: bool
   whitelist_ids: "str?"
   deemix_bitrate_lock: bool
-  audd_api_key: "str?"
+  acrcloud_host: "str?"
+  acrcloud_access_key: "str?"
+  acrcloud_access_secret: "str?"
   openai_api_key: "str?"
   whisper_url: "str?"

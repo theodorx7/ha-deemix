@@ -372,8 +372,8 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             return Ok(());
         }
         "🎵 Recognize song" => {
-            if !state.config.audd_enabled() || !user_settings.song_recognition {
-                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add AUDD_API_KEY in the add-on options, or enable it in /settings.").await?;
+            if !state.config.acrcloud_enabled() || !user_settings.song_recognition {
+                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add ACRCLOUD_ACCESS_KEY and ACRCLOUD_ACCESS_SECRET in the add-on options, or enable it in /settings.").await?;
             } else {
                 dialogue.update(State::AwaitingVoiceRecognize).await.ok();
                 bot.send_message(msg.chat.id, "🎵 Send me a voice recording of a song and I'll identify it.
@@ -481,8 +481,8 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             return Ok(());
         }
         t if t.starts_with("🎵 Song recognition:") => {
-            if !state.config.audd_enabled() {
-                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add AUDD_API_KEY in the add-on options to enable it.").await?;
+            if !state.config.acrcloud_enabled() {
+                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add ACRCLOUD_ACCESS_KEY and ACRCLOUD_ACCESS_SECRET in the add-on options to enable it.").await?;
                 return Ok(());
             }
             users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {

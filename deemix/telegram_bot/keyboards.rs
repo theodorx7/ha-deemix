@@ -28,7 +28,7 @@ pub(crate) fn next_bitrate(current: u8) -> u8 {
 pub(crate) fn settings_keyboard(s: &UserSettings, config: &Config, bitrate: u8) -> KeyboardMarkup {
     let notif = if s.restart_notifications { "🔔 Restart notifications: ON" } else { "🔕 Restart notifications: OFF" };
     let voice = if s.voice_search && config.whisper_enabled() { "🎤 Voice search: ON" } else { "🎤 Voice search: OFF" };
-    let recog = if s.song_recognition && config.audd_enabled() { "🎵 Song recognition: ON" } else { "🎵 Song recognition: OFF" };
+    let recog = if s.song_recognition && config.acrcloud_enabled() { "🎵 Song recognition: ON" } else { "🎵 Song recognition: OFF" };
     let bitrate_btn = if config.deemix_bitrate_lock {
         format!("🔒 Quality: {} (locked)", bitrate_label(bitrate))
     } else {
@@ -60,7 +60,7 @@ pub(crate) fn main_keyboard(s: &UserSettings, config: &Config) -> KeyboardMarkup
 
     // Only show voice buttons if features are configured AND user has them enabled
     let show_voice = config.whisper_enabled() && s.voice_search;
-    let show_recog = config.audd_enabled() && s.song_recognition;
+    let show_recog = config.acrcloud_enabled() && s.song_recognition;
 
     if show_voice || show_recog {
         let mut voice_row = vec![];

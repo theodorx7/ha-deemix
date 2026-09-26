@@ -43,7 +43,9 @@ if [ "${TELEGRAM_ENABLED}" = "true" ]; then
     set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
     set_env "WHITELIST_ENABLED" "$(jq -r '.whitelist_enabled // false' /data/options.json)"
     set_env "WHITELIST_IDS" "$(jq -r '.whitelist_ids // ""' /data/options.json)"
-    set_env "AUDD_API_KEY" "$(jq -r '.audd_api_key // ""' /data/options.json)"
+    set_env "ACRCLOUD_HOST" "$(jq -r '.acrcloud_host // "identify-eu-west-1.acrcloud.com"' /data/options.json)"
+    set_env "ACRCLOUD_ACCESS_KEY" "$(jq -r '.acrcloud_access_key // ""' /data/options.json)"
+    set_env "ACRCLOUD_ACCESS_SECRET" "$(jq -r '.acrcloud_access_secret // ""' /data/options.json)"
     set_env "OPENAI_API_KEY" "$(jq -r '.openai_api_key // ""' /data/options.json)"
     set_env "WHISPER_URL" "$(jq -r '.whisper_url // ""' /data/options.json)"
     

@@ -28,7 +28,7 @@ panel_icon: "mdi:music-circle"
 options:
   env_vars:
     - name: DEEMIX_MUSIC_DIR
-      value: /media
+      value: /media/deemix
   telegram_enabled: false
   telegram_token: ""
   whitelist_enabled: true

@@ -34,7 +34,7 @@ options:
   deemix_bitrate_lock: false
   acrcloud_host: "identify-eu-west-1.acrcloud.com"
   acrcloud_access_key: ""
-  acrcloud_access_secret: ""
+  acrcloud_secret_key: ""
   openai_api_key: ""
   whisper_url: ""
 schema:
@@ -48,6 +48,6 @@ schema:
   deemix_bitrate_lock: bool
   acrcloud_host: "str?"
   acrcloud_access_key: "str?"
-  acrcloud_access_secret: "str?"
+  acrcloud_secret_key: "str?"
   openai_api_key: "str?"
   whisper_url: "str?"

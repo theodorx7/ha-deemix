@@ -40,7 +40,7 @@ pub struct Config {
     pub users_file: String,
     pub acrcloud_host: String,
     pub acrcloud_access_key: String,
-    pub acrcloud_access_secret: String,
+    pub acrcloud_secret_key: String,
     pub openai_api_key: String,
     pub whisper_url: String,
     pub deemix_bitrate: u8,
@@ -64,7 +64,7 @@ impl Config {
             acrcloud_host: env::var("ACRCLOUD_HOST")
                 .unwrap_or_else(|_| "identify-eu-west-1.acrcloud.com".to_string()),
             acrcloud_access_key: env::var("ACRCLOUD_ACCESS_KEY").unwrap_or_default(),
-            acrcloud_access_secret: env::var("ACRCLOUD_ACCESS_SECRET").unwrap_or_default(),
+            acrcloud_secret_key: env::var("ACRCLOUD_SECRET_KEY").unwrap_or_default(),
             openai_api_key: env::var("OPENAI_API_KEY").unwrap_or_default(),
             whisper_url: env::var("WHISPER_URL").unwrap_or_default(),
             deemix_bitrate: env::var("BOT_BITRATE")
@@ -83,7 +83,7 @@ impl Config {
     }
 
 
-    pub fn acrcloud_enabled(&self) -> bool { !self.acrcloud_access_key.is_empty() && !self.acrcloud_access_secret.is_empty() }
+    pub fn acrcloud_enabled(&self) -> bool { !self.acrcloud_access_key.is_empty() && !self.acrcloud_secret_key.is_empty() }
     pub fn whisper_enabled(&self) -> bool { !self.openai_api_key.is_empty() || !self.whisper_url.is_empty() }
     pub fn is_user_allowed(&self, user_id: i64) -> bool {
         !self.whitelist_enabled || self.whitelist_ids.contains(&user_id)

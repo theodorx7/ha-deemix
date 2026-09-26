@@ -17,7 +17,7 @@ use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::types::{CallbackQuery, FileId, InlineKeyboardButton, InlineKeyboardMarkup};
 
-use crate::{BotState, MyDialogue, build_search_results, deemix, format_queue_outcome, spotify, user_id_from_msg, users};
+use crate::{BotState, MyDialogue, build_search_results, deemix, spotify, user_id_from_msg, users};
 
 /// Transcribe an OGG audio file using the configured Whisper backend.
 /// Returns the transcribed text or an error string.
@@ -93,7 +93,7 @@ pub async fn recognize(
         .map_err(|e| e.to_string())?
         .as_secs();
     let string_to_sign = format!("POST\n/v1/identify\n{}\naudio\n1\n{}", cfg.acrcloud_access_key, ts);
-    let mut mac = Hmac::<Sha1>::new_from_slice(cfg.acrcloud_access_secret.as_bytes())
+    let mut mac = Hmac::<Sha1>::new_from_slice(cfg.acrcloud_secret_key.as_bytes())
         .map_err(|e| e.to_string())?;
     mac.update(string_to_sign.as_bytes());
     let signature = STANDARD.encode(mac.finalize().into_bytes());
@@ -310,7 +310,7 @@ pub(crate) async fn process_voice_transcribe(
 }
 
 /// Core song recognition logic shared by dialogue receiver and callback handler.
-/// Implements the cascade: Deezer URL → Spotify metadata → text search.
+/// Implements the cascade: user confirmation of the recognized Deezer track → Spotify metadata → text search.
 pub(crate) async fn process_voice_recognize(
     bot: &Bot,
     chat_id: teloxide::types::ChatId,
@@ -321,25 +321,19 @@ pub(crate) async fn process_voice_recognize(
     match recognize(&state.http, audio_bytes, &state.config).await {
         Ok(rec) => {
             let query = format!("{} {}", rec.title, rec.artist).replace('&', " ").split_whitespace().collect::<Vec<&str>>().join(" ");
-            bot.edit_message_text(chat_id, status_msg_id, format!("🎵 Found: {} — {}\nQueuing...", rec.title, rec.artist)).await?;
-            // Step 1: Use the Deezer URL from the recognition result if available
+            let text = format!("🎵 Recognized track: {} — {}", rec.title, rec.artist);
+            // Step 1: exact Deezer track found — let the user confirm before queueing
             if let Some(ref deezer_url) = rec.deezer_url {
-                log::info!("[recognize] Step 1: using Deezer URL: {}", deezer_url);
-                match deemix::add_to_queue_confirmed(&state, deezer_url, false, chat_id.0).await {
-                    Ok(deemix::QueueOutcome::Added { .. }) => {
-                        bot.edit_message_text(chat_id, status_msg_id, format!("✅ {} — {} added to queue!", rec.title, rec.artist)).await?;
-                    }
-                    Ok(oc) => {
-                        bot.edit_message_text(chat_id, status_msg_id, format_queue_outcome("Track", &oc)).await?;
-                    }
-                    Err(e) => {
-                        log::info!("[recognize] Step 1 FAILED: add_to_queue error: {}", e);
-                        let req = bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to queue: {}", e));
-                        let req = if e == deemix::ARL_ERROR { req.reply_markup(crate::add_arl_keyboard()) } else { req };
-                        req.await?;
-                    }
-                }
+                log::info!("[recognize] Step 1: offering Deezer track: {}", deezer_url);
+                let buttons = vec![
+                    vec![InlineKeyboardButton::callback("⬇️ Download", format!("dl:{}", deezer_url))],
+                    vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")],
+                ];
+                bot.edit_message_text(chat_id, status_msg_id, text.clone())
+                    .reply_markup(InlineKeyboardMarkup::new(buttons))
+                    .await?;
             } else {
+                bot.edit_message_text(chat_id, status_msg_id, text).await?;
                 // Step 2: Try Spotify metadata for proper Unicode title; fall back to arabizi
                 let search_query = if let Some(ref sp_url) = rec.spotify_url {
                     log::info!("[recognize] Step 2: resolving Spotify URL: {}", sp_url);

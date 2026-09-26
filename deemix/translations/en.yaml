@@ -47,12 +47,12 @@ configuration:
     name: ACRCloud Access Key
     description: >-
       Access key of your ACRCloud Audio & Video Recognition project.
-      Required together with the Access Secret; enables the song
+      Required together with the Secret Key; enables the song
       recognition feature.
-  acrcloud_access_secret:
-    name: ACRCloud Access Secret
+  acrcloud_secret_key:
+    name: ACRCloud Secret Key
     description: >-
-      Access secret of your ACRCloud Audio & Video Recognition project.
+      Secret key of your ACRCloud Audio & Video Recognition project.
       Required together with the Access Key.
   openai_api_key:
     name: OpenAI API Key

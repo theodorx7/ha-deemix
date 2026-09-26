@@ -46,7 +46,6 @@ RUN cd /app/packages/webui && \
         -o -name "*.map" \
         -o -name "*.tsbuildinfo" \) \
         -delete && \
-    rm -rf /app/packages/webui/dist/public/fonts
 
 # ================================================================
 # Stage 3: Prod Dependencies

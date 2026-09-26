@@ -240,22 +240,6 @@
 		grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
 	}
 
-	/* --- LOCAL PATCH: hide main scrollbar on touch devices --- */
-	/* Original: no such block (main::-webkit-scrollbar { width: 10px } is defined
-	   in TheContent.vue and applies everywhere). */
-	/* Reason: the Home Assistant Android app (WebView) draws the main scroll
-	   container's scrollbar as a classic space-taking 10px strip, shrinking the
-	   content area below the two-column threshold of .release-grid; touch
-	   browsers draw overlay scrollbars instead, so hiding it on coarse-pointer
-	   devices restores the exact rendering width of touch browsers. Desktop
-	   (fine pointer) is not affected. */
-	@media (pointer: coarse) {
-		main::-webkit-scrollbar {
-			width: 0;
-		}
-	}
-	/* --- END LOCAL PATCH --- */
-
 	.tag {
 		padding: 3px;
 		background-color: var(--primary-color);

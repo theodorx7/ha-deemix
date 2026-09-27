@@ -735,7 +735,7 @@ fn add_arl_keyboard() -> InlineKeyboardMarkup {
 }
 
 /// Render a verified addToQueue outcome as the user-facing message. `label` is the capitalized request kind ("Track", "Album", ...).
-pub(crate) fn format_queue_outcome(label: &str, oc: &deemix::QueueOutcome) -> String {
+fn format_queue_outcome(label: &str, oc: &deemix::QueueOutcome) -> String {
     use deemix::QueueOutcome;
     match oc {
         QueueOutcome::Added { tracks, is_track, already, failed } => {
@@ -762,7 +762,7 @@ pub(crate) fn format_queue_outcome(label: &str, oc: &deemix::QueueOutcome) -> St
     }
 }
 
-pub(crate) fn capitalize(s: &str) -> String {
+fn capitalize(s: &str) -> String {
     let mut c = s.chars();
     match c.next() {
         None => String::new(),

@@ -82,7 +82,7 @@ fn readable_queue_error(errid: &str) -> String {
     }
 }
 
-pub async fn add_to_queue(state: &Arc<BotState>, url: &str) -> Result<Vec<Value>, String> {
+async fn add_to_queue(state: &Arc<BotState>, url: &str) -> Result<Vec<Value>, String> {
     let result = match add_to_queue_once(state, url).await {
         Err(e) if e.eq_ignore_ascii_case("notloggedin") => {
             match relogin(state).await {

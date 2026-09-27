@@ -13,15 +13,19 @@ use reqwest::multipart;
 use sha1::Sha1;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use teloxide::prelude::*;
 use teloxide::types::{CallbackQuery, FileId, InlineKeyboardButton, InlineKeyboardMarkup};
 
 use crate::{BotState, MyDialogue, build_search_results, deemix, spotify, user_id_from_msg, users};
 
+/// How long a pending voice entry stays in memory; pruned on insert so the map cannot grow unbounded.
+const PENDING_VOICE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+
 /// Transcribe an OGG audio file using the configured Whisper backend.
 /// Returns the transcribed text or an error string.
-pub async fn transcribe(
+async fn transcribe(
     http: &reqwest::Client,
     audio_bytes: Vec<u8>,
     openai_key: &str,
@@ -75,7 +79,7 @@ pub struct RecognitionResult {
 
 /// Identify a song from audio bytes using the ACRCloud Identification API.
 /// Returns RecognitionResult or an error string.
-pub async fn recognize(
+async fn recognize(
     http: &reqwest::Client,
     audio_bytes: Vec<u8>,
     cfg: &crate::config::Config,
@@ -193,7 +197,10 @@ pub(crate) async fn handle_voice_message(
     let short_id = format!("{}:{}", msg.chat.id.0, msg.id.0);
     {
         let mut map = state.pending_voices.lock().await;
-        map.insert(short_id.clone(), voice.file.id.to_string());
+        // Prune-on-insert (same pattern as the ws event buffer) keeps the map bounded without a background task
+        let now = std::time::Instant::now();
+        map.retain(|_, (_, stored_at)| now.duration_since(*stored_at) < PENDING_VOICE_TTL);
+        map.insert(short_id.clone(), (voice.file.id.to_string(), now));
     }
 
     // Build choice buttons based on what's enabled
@@ -234,7 +241,7 @@ pub(crate) async fn handle_voice_callback(
             // Retrieve file_id from pending_voices map
             let file_id = {
                 let map = state.pending_voices.lock().await;
-                map.get(short_id).cloned()
+                map.get(short_id).map(|(f, _)| f.clone())
             };
             let file_id = match file_id {
                 Some(f) => f,

@@ -34,7 +34,7 @@ pub fn load(path: &str) -> UsersDb {
     Arc::new(RwLock::new(map))
 }
 
-pub fn save(db: &UsersDb, path: &str) {
+fn save(db: &UsersDb, path: &str) {
     if let Ok(map) = db.read() {
         if let Ok(json) = serde_json::to_string_pretty(&*map) {
             let _ = std::fs::write(path, json);

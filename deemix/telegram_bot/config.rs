@@ -114,7 +114,7 @@ pub struct BotState {
     pub config: Arc<Config>,
     pub http: Client,
     pub users: UsersDb,
-    pub pending_voices: Arc<Mutex<HashMap<String, String>>>, // short_id -> file_id
+    pub pending_voices: Arc<Mutex<HashMap<String, (String, std::time::Instant)>>>, // voice key -> (file_id, stored_at), pruned on insert (see voice.rs)
     pub current_bitrate: Arc<Mutex<u8>>, // runtime-changeable bitrate
     pub current_arl: Arc<Mutex<String>>, // updated via /updatearl, used for auto re-login
     /// Recent deemix WS events (queueError / alreadyInQueue), consumed by add_to_queue_confirmed.

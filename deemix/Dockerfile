@@ -76,7 +76,7 @@ FROM ghcr.io/linuxserver/baseimage-alpine:3.24
 
 RUN apk add --no-cache "nodejs>=24.0.0"
 
-# Prod-only node_modules из Stage 2
+# Prod-only node_modules из Stage 3
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=prod-deps /app/packages /app/packages
 

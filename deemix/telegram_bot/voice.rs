@@ -189,8 +189,8 @@ pub(crate) async fn handle_voice_message(
         return Ok(());
     }
 
-    // Store file_id with a short key to stay under Telegram's 64 byte callback limit
-    let short_id = format!("{}", msg.id.0);
+    // Store file_id with a chat-unique short key (message ids are only unique per chat) to stay under Telegram's 64 byte callback limit
+    let short_id = format!("{}:{}", msg.chat.id.0, msg.id.0);
     {
         let mut map = state.pending_voices.lock().await;
         map.insert(short_id.clone(), voice.file.id.to_string());

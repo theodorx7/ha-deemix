@@ -172,8 +172,7 @@ async fn handle_command(
     dialogue: MyDialogue,
 ) -> ResponseResult<()> {
     // Auto-create user on any interaction
-    let user_settings = users::get_or_create(&state.users, user_id_from_msg(&msg));
-    users::save(&state.users, &state.config.users_file);
+    let user_settings = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
 
     match cmd {
         Command::Start => {
@@ -307,7 +306,7 @@ async fn handle_quality_change(
         *br
     };
 
-    let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
+    let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
     let kb = settings_keyboard(&updated, &state.config, new_bitrate);
     bot.send_message(
         msg.chat.id,
@@ -324,8 +323,7 @@ async fn handle_quality_change(
 // ── Message Handler ───────────────────────────────────────────────────────────
 async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
     // Auto-create user
-    let user_settings = users::get_or_create(&state.users, user_id_from_msg(&msg));
-    users::save(&state.users, &state.config.users_file);
+    let user_settings = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
 
     // ── Voice note handling ──
     if msg.voice().is_some() {
@@ -450,7 +448,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
                 s.restart_notifications = !s.restart_notifications;
             });
-            let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
+            let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
             let current_br = *state.current_bitrate.lock().await;
             let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.restart_notifications { "ON" } else { "OFF" };
@@ -465,7 +463,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
                 s.voice_search = !s.voice_search;
             });
-            let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
+            let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
             let current_br = *state.current_bitrate.lock().await;
             let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.voice_search { "ON" } else { "OFF" };
@@ -488,7 +486,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
                 s.song_recognition = !s.song_recognition;
             });
-            let updated = users::get_or_create(&state.users, user_id_from_msg(&msg));
+            let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
             let current_br = *state.current_bitrate.lock().await;
             let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.song_recognition { "ON" } else { "OFF" };

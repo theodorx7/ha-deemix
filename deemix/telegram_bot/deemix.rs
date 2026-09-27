@@ -262,19 +262,7 @@ pub async fn get_queue(state: &Arc<BotState>) -> Result<QueueStatus, String> {
                 Some("failed") => failed += 1,
                 Some("downloading") => downloading += 1,
                 Some("inQueue") => pending += 1,
-                // Older deemix builds don't expose status — fall back to counters
-                _ => {
-                    let progress = item["progress"].as_u64().unwrap_or(0);
-                    let downloaded = item["downloaded"].as_u64().unwrap_or(0);
-                    let size = item["size"].as_u64().unwrap_or(1);
-                    if downloaded >= size && size > 0 {
-                        done += 1;
-                    } else if progress > 0 {
-                        downloading += 1;
-                    } else {
-                        pending += 1;
-                    }
-                }
+                _ => {}
             }
         }
     }
@@ -326,13 +314,7 @@ pub async fn search(
 
     let data: Value = resp.json().await.map_err(|e| e.to_string())?;
 
-    let results = data["data"]
-        .as_array()
-        .or_else(|| {
-            data["results"]["data"].as_array()
-        })
-        .cloned()
-        .unwrap_or_default();
+    let results = data["data"].as_array().cloned().unwrap_or_default();
 
     Ok(results.into_iter().take(8).collect())
 }

@@ -74,7 +74,7 @@ RUN apk add --no-cache python3 make g++ && \
 
 FROM ghcr.io/linuxserver/baseimage-alpine:3.24
 
-RUN apk add --no-cache nodejs>=24.0.0
+RUN apk add --no-cache "nodejs>=24.0.0"
 
 # Prod-only node_modules из Stage 2
 COPY --from=prod-deps /app/node_modules /app/node_modules

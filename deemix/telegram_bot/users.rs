@@ -42,17 +42,19 @@ pub fn save(db: &UsersDb, path: &str) {
     }
 }
 
-pub fn get_or_create(db: &UsersDb, user_id: i64) -> UserSettings {
+pub fn get_or_create(db: &UsersDb, path: &str, user_id: i64) -> UserSettings {
     let key = user_id.to_string();
     if let Ok(map) = db.read() {
         if let Some(settings) = map.get(&key) {
             return settings.clone();
         }
     }
-    // Auto-create with defaults
+    // Auto-create with defaults; persist only on actual creation
     let settings = UserSettings::default();
     if let Ok(mut map) = db.write() {
-        map.insert(key, settings.clone());
+        if map.insert(key, settings.clone()).is_none() {
+            save(db, path);
+        }
     }
     settings
 }

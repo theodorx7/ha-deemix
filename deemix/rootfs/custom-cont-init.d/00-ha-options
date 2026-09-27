@@ -12,7 +12,7 @@ set_env() {
 # Custom environment variables from the add-on options (env_vars)
 while IFS= read -r -d '' key && IFS= read -r value; do
     set_env "${key}" "${value}"
-    echo "[info] env: ${key}=${value}"
+    echo "[info] env: ${key}=<redacted>"
 done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.json)
 
 # --- Apply PUID/PGID to user abc (default 1000:1000) ---

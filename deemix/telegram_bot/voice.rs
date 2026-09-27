@@ -180,7 +180,7 @@ pub(crate) async fn handle_voice_message(
         Some(v) => v,
         None => return Ok(()),
     };
-    let user_settings = users::get_or_create(&state.users, user_id_from_msg(&msg));
+    let user_settings = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
     let recog_on = state.config.acrcloud_enabled() && user_settings.song_recognition;
     let whisper_on = state.config.whisper_enabled() && user_settings.voice_search;
 
@@ -248,10 +248,16 @@ pub(crate) async fn handle_voice_callback(
             bot.edit_message_text(msg.chat().id, msg.id(), "⏳ Processing voice note...").await?;
 
             // Download audio from Telegram
-            let file = bot.get_file(FileId(file_id.clone())).await
-                .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
+            let file = match bot.get_file(FileId(file_id.clone())).await {
+                Ok(f) => f,
+                Err(e) => {
+                    bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed to fetch file: {}", e)).await?;
+                    return Ok(());
+                }
+            };
             let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
-            let audio_bytes = match state.http.get(&url).send().await {
+            // Large audio files (Telegram caps bot downloads at 20 MB) — per-request timeout overrides the client-wide 30 s
+            let audio_bytes = match state.http.get(&url).timeout(std::time::Duration::from_secs(120)).send().await {
                 Ok(r) => match r.bytes().await {
                     Ok(b) => b.to_vec(),
                     Err(e) => { bot.edit_message_text(msg.chat().id, msg.id(), format!("❌ Failed to read audio: {}", e)).await?; return Ok(()); }
@@ -411,11 +417,17 @@ pub(crate) async fn receive_voice_transcribe(bot: Bot, msg: Message, state: Arc<
     };
     let sent = bot.send_message(msg.chat.id, "🎤 Transcribing...").await?;
     // Download audio from Telegram
-    let file = bot.get_file(voice.file.id.clone()).await
-        .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
+    let file = match bot.get_file(voice.file.id.clone()).await {
+        Ok(f) => f,
+        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to fetch file: {}", e)).await?; return Ok(()); }
+    };
     let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
-    let audio_bytes = match state.http.get(&url).send().await {
-        Ok(r) => r.bytes().await.map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?.to_vec(),
+    // Large audio files (Telegram caps bot downloads at 20 MB) — per-request timeout overrides the client-wide 30 s
+    let audio_bytes = match state.http.get(&url).timeout(std::time::Duration::from_secs(120)).send().await {
+        Ok(r) => match r.bytes().await {
+            Ok(b) => b.to_vec(),
+            Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to read audio: {}", e)).await?; return Ok(()); }
+        },
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to download audio: {}", e)).await?; return Ok(()); }
     };
     process_voice_transcribe(&bot, msg.chat.id, sent.id, audio_bytes, &state).await
@@ -432,11 +444,17 @@ pub(crate) async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<B
     };
     let sent = bot.send_message(msg.chat.id, "🎵 Recognizing song...").await?;
     // Download audio from Telegram
-    let file = bot.get_file(voice.file.id.clone()).await
-        .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
+    let file = match bot.get_file(voice.file.id.clone()).await {
+        Ok(f) => f,
+        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to fetch file: {}", e)).await?; return Ok(()); }
+    };
     let url = format!("https://api.telegram.org/file/bot{}/{}", bot.token(), file.path);
-    let audio_bytes = match state.http.get(&url).send().await {
-        Ok(r) => r.bytes().await.map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?.to_vec(),
+    // Large audio files (Telegram caps bot downloads at 20 MB) — per-request timeout overrides the client-wide 30 s
+    let audio_bytes = match state.http.get(&url).timeout(std::time::Duration::from_secs(120)).send().await {
+        Ok(r) => match r.bytes().await {
+            Ok(b) => b.to_vec(),
+            Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to read audio: {}", e)).await?; return Ok(()); }
+        },
         Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Failed to download audio: {}", e)).await?; return Ok(()); }
     };
     process_voice_recognize(&bot, msg.chat.id, sent.id, audio_bytes, &state).await

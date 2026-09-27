@@ -22,6 +22,7 @@ ingress: true
 ingress_port: 6595
 panel_title: Deemix
 panel_icon: "mdi:music-circle"
+panel_admin: false
 
 options:
   env_vars:

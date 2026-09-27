@@ -18,9 +18,9 @@ use std::time::Duration;
 use teloxide::prelude::*;
 use teloxide::types::{CallbackQuery, FileId, InlineKeyboardButton, InlineKeyboardMarkup};
 
-use crate::{BotState, MyDialogue, build_search_results, deemix, spotify, user_id_from_msg, users};
+use crate::{BotState, MyDialogue, build_search_results, deemix, search_and_show, spotify, user_id_from_msg, users};
 
-/// How long a pending voice entry stays in memory; pruned on insert so the map cannot grow unbounded.
+/// Entries are removed at press time; this TTL prunes never-pressed entries on insert so the map cannot grow unbounded.
 const PENDING_VOICE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// Transcribe an OGG audio file using the configured Whisper backend.
@@ -253,6 +253,9 @@ pub(crate) async fn handle_voice_callback(
 
             bot.edit_message_text(msg.chat().id, msg.id(), "⏳ Processing voice note...").await?;
 
+            // The edit replaced the choice buttons — the entry can never be pressed again, so release it now
+            state.pending_voices.lock().await.remove(short_id);
+
             // Download audio from Telegram
             let Some(audio_bytes) =
                 download_voice_audio(&bot, state, FileId(file_id), msg.chat().id, msg.id()).await?
@@ -319,21 +322,7 @@ pub(crate) async fn process_voice_transcribe(
         Ok(text) => {
             bot.edit_message_text(chat_id, status_msg_id, format!("🔍 I heard: {}\nSearching...", text)).await?;
             let sent = bot.send_message(chat_id, format!("Results for: {}", text)).await?;
-            match deemix::search(&state, &text, "track").await {
-                Ok(results) if results.is_empty() => {
-                    bot.edit_message_text(chat_id, sent.id, format!("😕 No results for: {}", text)).await?;
-                }
-                Ok(results) => {
-                    let (listing, mut buttons) = build_search_results(&results, "🎵");
-                    buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-                    bot.edit_message_text(chat_id, sent.id, format!("Results for {}:\n\n{}\nTap a button to download.", text, listing))
-                        .reply_markup(InlineKeyboardMarkup::new(buttons))
-                        .await?;
-                }
-                Err(e) => {
-                    bot.edit_message_text(chat_id, sent.id, format!("❌ Search failed: {}", e)).await?;
-                }
-            }
+            search_and_show(bot, state, chat_id, sent.id, &text, "track", &format!("😕 No results for: {}", text)).await?;
         }
         Err(e) => {
             bot.edit_message_text(chat_id, status_msg_id, format!("❌ Transcription failed: {}", e)).await?;

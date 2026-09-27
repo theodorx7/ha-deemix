@@ -680,21 +680,36 @@ pub(crate) fn build_search_results(results: &[serde_json::Value], icon: &str) ->
     (listing, buttons)
 }
 
-async fn do_search(bot: &Bot, msg: &Message, state: &Arc<BotState>, query: &str, search_type: &str) -> ResponseResult<()> {
-    let sent = bot.send_message(msg.chat.id, format!("🔍 Searching for {}...", query)).await?;
-
+/// Search Deezer for `query` and render the outcome into message `msg_id`:
+/// `empty_text` on zero results, the numbered results with a Cancel button
+/// otherwise, or the search error.
+pub(crate) async fn search_and_show(
+    bot: &Bot,
+    state: &Arc<BotState>,
+    chat_id: teloxide::types::ChatId,
+    msg_id: teloxide::types::MessageId,
+    query: &str,
+    search_type: &str,
+    empty_text: &str,
+) -> ResponseResult<()> {
     match deemix::search(state, query, search_type).await {
-        Ok(results) if results.is_empty() => { bot.edit_message_text(msg.chat.id, sent.id, "😕 No results found.").await?; }
+        Ok(results) if results.is_empty() => { bot.edit_message_text(chat_id, msg_id, empty_text.to_string()).await?; }
         Ok(results) => {
             let icon = if search_type == "track" { "🎵" } else { "💿" };
             let (listing, mut buttons) = build_search_results(&results, icon);
             buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-            bot.edit_message_text(msg.chat.id, sent.id, format!("Results for {}:\n\n{}\nTap a button to download.", query, listing))
+            bot.edit_message_text(chat_id, msg_id, format!("Results for {}:\n\n{}\nTap a button to download.", query, listing))
                 .reply_markup(InlineKeyboardMarkup::new(buttons))
                 .await?;
         }
-        Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Search failed: {}", e)).await?; }
+        Err(e) => { bot.edit_message_text(chat_id, msg_id, format!("❌ Search failed: {}", e)).await?; }
     }
+    Ok(())
+}
+
+async fn do_search(bot: &Bot, msg: &Message, state: &Arc<BotState>, query: &str, search_type: &str) -> ResponseResult<()> {
+    let sent = bot.send_message(msg.chat.id, format!("🔍 Searching for {}...", query)).await?;
+    search_and_show(bot, state, msg.chat.id, sent.id, query, search_type, "😕 No results found.").await?;
     Ok(())
 }
 

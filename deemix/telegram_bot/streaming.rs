@@ -8,9 +8,8 @@ use std::sync::{Arc, LazyLock};
 use regex::Regex;
 
 use teloxide::prelude::*;
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
-use crate::{BotState, apple, build_search_results, deemix, spotify};
+use crate::{BotState, apple, deemix, search_and_show, spotify};
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
 pub(crate) static SPOTIFY_TRACK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
@@ -32,20 +31,7 @@ pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<
         match spotify::resolve(url).await {
             Some(meta) => {
                 bot.edit_message_text(msg.chat.id, sent.id, format!("🔍 Found: {}\nSearching on Deezer...", meta.label)).await?;
-                match deemix::search(state, &meta.query, search_type).await {
-                    Ok(results) if results.is_empty() => {
-                        bot.edit_message_text(msg.chat.id, sent.id, format!("😕 No results found on Deezer for: {}", meta.query)).await?;
-                    }
-                    Ok(results) => {
-                        let icon = if search_type == "track" { "🎵" } else { "💿" };
-                        let (listing, mut buttons) = build_search_results(&results, icon);
-                        buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-                        bot.edit_message_text(msg.chat.id, sent.id, format!("Results for {}:\n\n{}\nTap a button to download.", meta.query, listing))
-                            .reply_markup(InlineKeyboardMarkup::new(buttons))
-                            .await?;
-                    }
-                    Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Search failed: {}", e)).await?; }
-                }
+                search_and_show(bot, state, msg.chat.id, sent.id, &meta.query, search_type, &format!("😕 No results found on Deezer for: {}", meta.query)).await?;
             }
             None => { bot.edit_message_text(msg.chat.id, sent.id, "❌ Could not resolve Spotify link. Try /search instead.").await?; }
         }
@@ -69,20 +55,7 @@ pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<
         match apple::resolve(url).await {
             Some(meta) => {
                 bot.edit_message_text(msg.chat.id, sent.id, format!("🔍 Found: {}\nSearching on Deezer...", meta.label)).await?;
-                match deemix::search(state, &meta.query, meta.search_type).await {
-                    Ok(results) if results.is_empty() => {
-                        bot.edit_message_text(msg.chat.id, sent.id, format!("😕 No results found on Deezer for: {}", meta.query)).await?;
-                    }
-                    Ok(results) => {
-                        let icon = if meta.search_type == "track" { "🎵" } else { "💿" };
-                        let (listing, mut buttons) = build_search_results(&results, icon);
-                        buttons.push(vec![InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-                        bot.edit_message_text(msg.chat.id, sent.id, format!("Results for {}:\n\n{}\nTap a button to download.", meta.query, listing))
-                            .reply_markup(InlineKeyboardMarkup::new(buttons))
-                            .await?;
-                    }
-                    Err(e) => { bot.edit_message_text(msg.chat.id, sent.id, format!("❌ Search failed: {}", e)).await?; }
-                }
+                search_and_show(bot, state, msg.chat.id, sent.id, &meta.query, meta.search_type, &format!("😕 No results found on Deezer for: {}", meta.query)).await?;
             }
             None => { bot.edit_message_text(msg.chat.id, sent.id, "❌ Could not resolve Apple Music link. Try /search instead.").await?; }
         }

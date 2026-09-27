@@ -49,12 +49,14 @@ pub fn get_or_create(db: &UsersDb, path: &str, user_id: i64) -> UserSettings {
             return settings.clone();
         }
     }
-    // Auto-create with defaults; persist only on actual creation
+    // Auto-create with defaults; persist only on actual creation.
     let settings = UserSettings::default();
+    let mut created = false;
     if let Ok(mut map) = db.write() {
-        if map.insert(key, settings.clone()).is_none() {
-            save(db, path);
-        }
+        created = map.insert(key, settings.clone()).is_none();
+    }
+    if created {
+        save(db, path);
     }
     settings
 }

@@ -11,7 +11,7 @@ pub async fn login(state: &Arc<BotState>) {
         log::warn!("No ARL configured — login via the deemix web UI or /updatearl in Telegram.");
         return;
     }
-    match login_arl(state, &state.config.deemix_arl.clone()).await {
+    match login_arl(state, &state.config.deemix_arl).await {
         Ok(_) => log::info!("Successfully logged into deemix"),
         Err(e) => log::warn!("Could not login to deemix: {}", e),
     }

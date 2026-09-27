@@ -230,7 +230,6 @@ pub(crate) async fn handle_voice_callback(
     if is_transcribe || is_recognize {
         if let Some(msg) = &q.message {
             let short_id = &data[3..];
-            let action = if is_transcribe { "transcribe" } else { "recognize" };
 
             // Retrieve file_id from pending_voices map
             let file_id = {
@@ -254,14 +253,10 @@ pub(crate) async fn handle_voice_callback(
                 return Ok(());
             };
 
-            match action {
-                "transcribe" => {
-                    process_voice_transcribe(&bot, msg.chat().id, msg.id(), audio_bytes, &state).await?;
-                }
-                "recognize" => {
-                    process_voice_recognize(&bot, msg.chat().id, msg.id(), audio_bytes, &state).await?;
-                }
-                _ => {}
+            if is_transcribe {
+                process_voice_transcribe(&bot, msg.chat().id, msg.id(), audio_bytes, &state).await?;
+            } else {
+                process_voice_recognize(&bot, msg.chat().id, msg.id(), audio_bytes, &state).await?;
             }
         }
     }

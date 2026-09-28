@@ -293,6 +293,7 @@ async fn download_voice_audio(
     let resp = match state.http.get(&url).timeout(std::time::Duration::from_secs(120)).send().await {
         Ok(r) => r,
         Err(e) => {
+            let e = e.without_url();
             bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to download audio: {}", e)).await?;
             return Ok(None);
         }
@@ -300,6 +301,7 @@ async fn download_voice_audio(
     match resp.bytes().await {
         Ok(b) => Ok(Some(b.to_vec())),
         Err(e) => {
+            let e = e.without_url();
             bot.edit_message_text(chat_id, status_msg_id, format!("❌ Failed to read audio: {}", e)).await?;
             Ok(None)
         }

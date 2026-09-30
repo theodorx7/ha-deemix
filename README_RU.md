@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/theodorx7/ha-deemix">
-    <img src="deemix/logo.png" alt="Logo" width="200" style="vertical-align: middle; margin-right: 15px;">
+    <img src="deemix/logo.png" alt="Logo" width="180" style="vertical-align: middle; margin-right: 15px;">
   </a>
   <h1 style="display: inline-block; vertical-align: middle; margin: 0;">
     Home Assistant App: Deemix with telegram bot

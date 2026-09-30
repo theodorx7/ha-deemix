@@ -6,5 +6,7 @@
 
 # Home Assistant App: Deemix with telegram bot
 
-> ⚠️ **WIP: IN DEVELOPMENT**
-> Subscribe to updates (**Watch -> Releases**) and wait for the first release.
+[English](https://github.com/theodorx7/ha-deemix/blob/main/README.md) | [Russian](https://github.com/theodorx7/ha-deemix/blob/main/README_RU.md)
+
+## ⚠️ **WIP: IN DEVELOPMENT**
+Subscribe to updates (**Watch -> Releases**) and wait for the first release.

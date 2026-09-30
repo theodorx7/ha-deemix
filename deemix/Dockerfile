@@ -102,6 +102,6 @@ RUN chmod +x /custom-cont-init.d/* /usr/local/bin/telegram_bot && \
 
 LABEL \
     org.opencontainers.image.title="Home Assistant App: Deemix with telegram bot" \
-    org.opencontainers.image.description="High-quality music downloader with a telegram bot: remote, chat-based control for automated downloads." \
+    org.opencontainers.image.description="FLAC/MP3 music downloader with a Telegram bot: remote, chat-based control for automated downloads and built-in audio recognition." \
     org.opencontainers.image.source="https://github.com/theodorx7/ha-deemix" \
     org.opencontainers.image.licenses="GPL-3.0"

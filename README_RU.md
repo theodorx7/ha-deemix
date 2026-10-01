@@ -8,11 +8,11 @@
 </div>
 
 <div align="left">
-  <a href="#donate"><img src="https://img.shields.io/static/v1?label=DONATE&message=USDT%20&labelColor=555&color=26A17B&style=for-the-badge" alt="DONATE USDT"></a> &thinsp; <a href="https://donate.stream/donate_6a8404d5ea133"><img src="https://img.shields.io/badge/DONAT.stream-fc0?style=for-the-badge&logo=heart&logoColor=white" alt="DONAT.stream"></a>
+ <img src="https://img.shields.io/badge/aarch64-yes-green.svg" alt="Supports aarch64 Architecture"> &thinsp; <img src="https://img.shields.io/badge/amd64-yes-green.svg" alt="Supports amd64 Architecture">
 </div>
 
 <div align="right">
- <img src="https://img.shields.io/badge/aarch64-yes-green.svg" alt="Supports aarch64 Architecture"> &thinsp; <img src="https://img.shields.io/badge/amd64-yes-green.svg" alt="Supports amd64 Architecture">
+  <a href="#donate"><img src="https://img.shields.io/static/v1?label=DONATE&message=USDT%20&labelColor=555&color=26A17B&style=for-the-badge" alt="DONATE USDT"></a> &thinsp; <a href="https://donate.stream/donate_6a8404d5ea133"><img src="https://img.shields.io/badge/DONAT.stream-fc0?style=for-the-badge&logo=heart&logoColor=white" alt="DONAT.stream"></a>
 </div>
 
 [English](https://github.com/theodorx7/ha-deemix/blob/main/README.md) | [Russian](https://github.com/theodorx7/ha-deemix/blob/main/README_RU.md)

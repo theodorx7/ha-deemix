@@ -36,8 +36,8 @@ options:
   acrcloud_host: ""
   acrcloud_access_key: ""
   acrcloud_secret_key: ""
-  openai_api_key: ""
-  whisper_url: ""
+#  openai_api_key: ""
+#  whisper_url: ""
 schema:
   env_vars:
     - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
@@ -50,5 +50,5 @@ schema:
   acrcloud_host: "str?"
   acrcloud_access_key: "str?"
   acrcloud_secret_key: "str?"
-  openai_api_key: "str?"
-  whisper_url: "str?"
+#  openai_api_key: "str?"
+#  whisper_url: "str?"

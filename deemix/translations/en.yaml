@@ -54,15 +54,5 @@ configuration:
     description: >-
       Secret key of your ACRCloud Audio & Video Recognition project.
       Required together with the Access Key.
-  openai_api_key:
-    name: OpenAI API Key
-    description: >-
-      API key for transcribing voice messages via OpenAI Whisper.
-      Optional; enables voice search.
-  whisper_url:
-    name: Whisper Server URL
-    description: >-
-      URL of a local Whisper-compatible server for transcribing
-      voice messages. Optional; alternative to the OpenAI API key.
 network:
   6595/tcp: "Deemix WebUI"

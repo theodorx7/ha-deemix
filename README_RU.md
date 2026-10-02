@@ -17,5 +17,21 @@
 
 [English](https://github.com/theodorx7/ha-deemix/blob/main/README.md) | [Russian](https://github.com/theodorx7/ha-deemix/blob/main/README_RU.md)
 
-## ⚠️ **WIP: IN DEVELOPMENT**
-Subscribe to updates (**Watch -> Releases**) and wait for the first release.
+
+Приложение для скачивания музыки во FLAC и MP3 с Telegram-ботом: удаленное управление через чат для автоматических загрузок и встроенная функция распознавания аудио.
+
+
+
+## Возможности
+
+
+
+## Установка
+### Нажмите на кнопку
+[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](
+https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/theodorx7/ha-navidrome-rating-sync/
+)
+### Или выполните шаги вручную
+1. В интерфейсе Home Assistant перейдите в <kbd>Настройки</kbd> → <kbd>Приложения</kbd> → <kbd>Установить приложение</kbd> (внизу справа).
+2. Нажмите на меню с тремя точками в правом верхнем углу <kbd>⋮</kbd> → <kbd>Репозитории</kbd> и добавьте URL-адрес этого репозитория: [https://github.com/theodorx7/ha-navidrome-rating-sync/](https://github.com/theodorx7/ha-navidrome-rating-sync)
+3. Обновите страницу и найдите приложение «Navidrome Rating Sync».

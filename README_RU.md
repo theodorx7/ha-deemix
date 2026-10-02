@@ -35,3 +35,4 @@ https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repositor
 1. В интерфейсе Home Assistant перейдите в <kbd>Настройки</kbd> → <kbd>Приложения</kbd> → <kbd>Установить приложение</kbd> (внизу справа).
 2. Нажмите на меню с тремя точками в правом верхнем углу <kbd>⋮</kbd> → <kbd>Репозитории</kbd> и добавьте URL-адрес этого репозитория: [https://github.com/theodorx7/ha-deemix](https://github.com/theodorx7/ha-deemix)
 3. Обновите страницу и найдите приложение «Navidrome Rating Sync».
+

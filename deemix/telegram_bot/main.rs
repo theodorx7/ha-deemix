@@ -215,14 +215,12 @@ I connect to your personal deemix server and queue music downloads for you. Just
         }
 
         Command::Search => {
-            dialogue.update(State::AwaitingSearch).await
-                .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
+            dialogue.update(State::AwaitingSearch).await.ok();
             bot.send_message(msg.chat.id, "🔍 What song or artist are you looking for?").await?;
         }
 
         Command::Album => {
-            dialogue.update(State::AwaitingAlbum).await
-                .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
+            dialogue.update(State::AwaitingAlbum).await.ok();
             bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
         }
 
@@ -246,8 +244,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
         }
 
         Command::Updatearl => {
-            dialogue.update(State::AwaitingArl).await
-                .map_err(|e| teloxide::RequestError::Api(teloxide::ApiError::Unknown(e.to_string())))?;
+            dialogue.update(State::AwaitingArl).await.ok();
             bot.send_message(msg.chat.id, "Please send your new Deezer ARL:")
                 .reply_markup(arl_cancel_keyboard())
                 .await?;
@@ -418,14 +415,18 @@ I connect to your personal deemix server and queue music downloads. Just tell me
         }
         // Settings toggles
         t if t.starts_with("🔔 Restart notifications:") || t.starts_with("🔕 Restart notifications:") => {
-            users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
+            let saved = users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
                 s.restart_notifications = !s.restart_notifications;
             });
             let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
             let current_br = *state.current_bitrate.lock().await;
             let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.restart_notifications { "ON" } else { "OFF" };
-            bot.send_message(msg.chat.id, format!("🔔 Restart notifications: {}", status)).reply_markup(kb).await?;
+            let mut text = format!("🔔 Restart notifications: {}", status);
+            if let Err(e) = saved {
+                text.push_str(&format!("\n⚠️ Failed to save settings: {} — the change will be lost on restart.", e));
+            }
+            bot.send_message(msg.chat.id, text).reply_markup(kb).await?;
             return Ok(());
         }
         t if t.starts_with("🎚️ Quality:") => {

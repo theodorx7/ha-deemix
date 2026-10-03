@@ -26,12 +26,15 @@ pub fn load(path: &str) -> UsersDb {
     Arc::new(RwLock::new(map))
 }
 
-fn save(db: &UsersDb, path: &str) {
-    if let Ok(map) = db.read() {
-        if let Ok(json) = serde_json::to_string_pretty(&*map) {
-            let _ = std::fs::write(path, json);
-        }
-    }
+fn save(db: &UsersDb, path: &str) -> Result<(), String> {
+    let json = {
+        let map = db.read().map_err(|e| e.to_string())?;
+        serde_json::to_string_pretty(&*map).map_err(|e| e.to_string())?
+    };
+    let tmp = format!("{}.tmp", path);
+    std::fs::write(&tmp, json).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 pub fn get_or_create(db: &UsersDb, path: &str, user_id: i64) -> UserSettings {
@@ -48,12 +51,14 @@ pub fn get_or_create(db: &UsersDb, path: &str, user_id: i64) -> UserSettings {
         created = map.insert(key, settings.clone()).is_none();
     }
     if created {
-        save(db, path);
+        if let Err(e) = save(db, path) {
+            log::error!("Failed to save {}: {}", path, e);
+        }
     }
     settings
 }
 
-pub fn update<F>(db: &UsersDb, path: &str, user_id: i64, f: F)
+pub fn update<F>(db: &UsersDb, path: &str, user_id: i64, f: F) -> Result<(), String>
 where
     F: FnOnce(&mut UserSettings),
 {
@@ -62,7 +67,7 @@ where
         let settings = map.entry(key).or_default();
         f(settings);
     }
-    save(db, path);
+    save(db, path)
 }
 
 pub fn all_with_notifications(db: &UsersDb) -> Vec<i64> {

@@ -6,13 +6,14 @@ use reqwest::Client;
 use teloxide::{
     dispatching::dialogue::InMemStorage,
     prelude::*,
-    types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup},
+    types::{
+        CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup,
+    },
 };
 
 mod config;
 mod apple;
 mod spotify;
-mod keyboards;
 mod streaming;
 mod deemix;
 mod users;
@@ -21,12 +22,6 @@ mod ws;
 
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
-use keyboards::{
-    arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard,
-    BTN_BACK_MENU, BTN_CHECK_STATUS, BTN_CLEAR_QUEUE, BTN_HELP, BTN_QUALITY,
-    BTN_QUALITY_LOCKED, BTN_RECOGNIZE_SONG, BTN_RESTART_NOTIF_OFF, BTN_RESTART_NOTIF_ON,
-    BTN_SEARCH_ALBUM, BTN_SEARCH_TRACK, BTN_SETTINGS, BTN_UPDATE_ARL,
-};
 use voice::receive_voice_recognize;
 use streaming::{
     handle_streaming_link, SPOTIFY_ALBUM_RE,
@@ -35,9 +30,7 @@ use streaming::{
 use apple::{APPLE_ALBUM_RE, APPLE_SONG_RE};
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
-// Two layers: extraction (pull a clean URL out of arbitrary message text)
-// and classification (route a clean URL to the right handler below).
-// Deezer classification patterns:
+// Two layers: extraction (pull a clean URL out of arbitrary message text) and classification (route a clean URL to the right handler below). Deezer classification patterns:
 static DEEZER_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"(?i)https?://(?:www\.)?deezer\.com/(?:[a-z]+/)?(track|album|playlist|artist)/(\d+)"
 ).unwrap());
@@ -48,12 +41,109 @@ static DEEZER_SHORT_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
 static ANY_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"(?i)\bhttps?://\S+"
 ).unwrap());
-// A bare web address without a scheme — only counts as a URL when a path
-// follows the TLD ("deezer.com/track/123"); a bare "word.word" without a
-// slash stays plain text and goes to search
+// A bare web address without a scheme — only counts as a URL when a path follows the TLD ("deezer.com/track/123"); a bare "word.word" without a slash stays plain text and goes to search
 static BARE_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
     r"(?i)(?:^|\W)((?:[\w-]+\.)+[a-z]{2,}/\S*)"
 ).unwrap());
+
+// ── Keyboards ─────────────────────────────────────────────────────────────────
+// Reply-keyboard labels — the single source for the keyboard builders below and the match arms in the message handler: Telegram echoes the exact button text
+// back as the message text, so both sides must use the same bytes. Toggle rows get an " ON"/" OFF" suffix appended at build time.
+const BTN_SEARCH_TRACK: &str = "🔍 Search a track";
+const BTN_SEARCH_ALBUM: &str = "💿 Search an album";
+const BTN_RECOGNIZE_SONG: &str = "🎵 Recognize song";
+const BTN_CHECK_STATUS: &str = "📊 Check status";
+const BTN_CLEAR_QUEUE: &str = "🧹 Clear queue";
+const BTN_SETTINGS: &str = "⚙️ Settings";
+const BTN_HELP: &str = "ℹ️ Help";
+const BTN_BACK_MENU: &str = "🔙 Back to menu";
+const BTN_UPDATE_ARL: &str = "🔑 Update ARL";
+const BTN_RESTART_NOTIF_ON: &str = "🔔 Restart notifications:";
+const BTN_RESTART_NOTIF_OFF: &str = "🔕 Restart notifications:";
+const BTN_QUALITY: &str = "🎚️ Quality:";
+const BTN_QUALITY_LOCKED: &str = "🔒 Quality:";
+
+const ARL_PROMPT: &str = "Please send your new Deezer ARL:";
+
+const HELP_TEXT: &str = "ℹ️ What I do?\n\n\
+I connect to your personal deemix server and queue music downloads for you. Just tell me what you want!\n\n\
+📥 Ways to request music:\n\
+• Type any song or artist name → search and pick from results\n\
+• Send a Deezer link (track, album, playlist, artist) → queued instantly\n\
+• Send a Spotify or Apple Music link (track or album) → found on Deezer and queued\n\
+• Send a Spotify playlist link → every track is scanned and queued individually\n\
+• Send an audio recording → I'll recognize the song and offer it for download\n\n\
+🔧 All commands:\n\
+/menu — quick action buttons\n\
+/search — search for a track\n\
+/album — search for an album\n\
+/status — check download queue\n\
+/clearqueue — clear completed downloads from queue\n\
+/settings — manage your personal preferences\n\
+/updatearl — update your Deezer ARL\n\n\
+⚙️ Settings (via /settings):\n\
+• Restart notifications — get notified when the bot restarts\n\n\
+💡 Tip: You don't need commands — just send a song name or link directly!";
+
+/// Label for a deemix bitrate value (9 = FLAC, 3/1 = MP3).
+fn bitrate_label(bitrate: u8) -> &'static str {
+    match bitrate {
+        9 => "FLAC (lossless)",
+        3 => "MP3 320kbps",
+        1 => "MP3 128kbps",
+        _ => "Unknown",
+    }
+}
+
+/// Cycle through the supported bitrates: FLAC → MP3 320 → MP3 128 → FLAC.
+fn next_bitrate(current: u8) -> u8 {
+    match current { 9 => 3, 3 => 1, _ => 9 }
+}
+
+fn settings_keyboard(s: &users::UserSettings, config: &Config, bitrate: u8) -> KeyboardMarkup {
+    let notif = if s.restart_notifications { format!("{} ON", BTN_RESTART_NOTIF_ON) } else { format!("{} OFF", BTN_RESTART_NOTIF_OFF) };
+    let bitrate_btn = if config.deemix_bitrate_lock {
+        format!("{} {} (locked)", BTN_QUALITY_LOCKED, bitrate_label(bitrate))
+    } else {
+        format!("{} {} (tap to change)", BTN_QUALITY, bitrate_label(bitrate))
+    };
+
+    KeyboardMarkup::new(vec![
+        vec![KeyboardButton::new(notif)],
+        vec![KeyboardButton::new(bitrate_btn)],
+        vec![KeyboardButton::new(BTN_UPDATE_ARL)],
+        vec![KeyboardButton::new(BTN_BACK_MENU)],
+    ])
+    .resize_keyboard()
+}
+
+fn arl_cancel_keyboard() -> InlineKeyboardMarkup {
+    InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback("❌ Cancel", "cancel_arl")]])
+}
+
+fn main_keyboard(config: &Config) -> KeyboardMarkup {
+    let mut rows = vec![
+        vec![
+            KeyboardButton::new(BTN_SEARCH_TRACK),
+            KeyboardButton::new(BTN_SEARCH_ALBUM),
+        ],
+    ];
+
+    if config.acrcloud_enabled() {
+        rows.push(vec![KeyboardButton::new(BTN_RECOGNIZE_SONG)]);
+    }
+
+    rows.push(vec![
+        KeyboardButton::new(BTN_CHECK_STATUS),
+        KeyboardButton::new(BTN_CLEAR_QUEUE),
+    ]);
+    rows.push(vec![
+        KeyboardButton::new(BTN_SETTINGS),
+        KeyboardButton::new(BTN_HELP),
+    ]);
+
+    KeyboardMarkup::new(rows).resize_keyboard()
+}
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 #[tokio::main]
@@ -190,29 +280,7 @@ async fn handle_command(
         }
 
         Command::Help => {
-            bot.send_message(
-                msg.chat.id,
-                "ℹ️ What I do?\n\n\
-I connect to your personal deemix server and queue music downloads for you. Just tell me what you want!\n\n\
-📥 Ways to request music:\n\
-• Type any song or artist name → search and pick from results\n\
-• Send a Deezer link (track, album, playlist, artist) → queued instantly\n\
-• Send a Spotify or Apple Music link (track or album) → found on Deezer and queued\n\
-• Send a Spotify playlist link → every track is scanned and queued individually\n\
-• Send an audio recording → I'll recognize the song and offer it for download\n\n\
-🔧 All commands:\n\
-/menu — quick action buttons\n\
-/search — search for a track\n\
-/album — search for an album\n\
-/status — check download queue\n\
-/clearqueue — clear completed downloads from queue\n\
-/settings — manage your personal preferences\n\
-/updatearl — update your Deezer ARL\n\n\
-⚙️ Settings (via /settings):\n\
-• Restart notifications — get notified when the bot restarts\n\n\
-💡 Tip: You don't need commands — just send a song name or link directly!",
-            )
-            .await?;
+            bot.send_message(msg.chat.id, HELP_TEXT).await?;
         }
 
         Command::Status => {
@@ -220,39 +288,27 @@ I connect to your personal deemix server and queue music downloads for you. Just
         }
 
         Command::Search => {
-            dialogue.update(State::AwaitingSearch).await.ok();
-            bot.send_message(msg.chat.id, "🔍 What song or artist are you looking for?").await?;
+            prompt_search(&bot, &msg, &dialogue).await?;
         }
 
         Command::Album => {
-            dialogue.update(State::AwaitingAlbum).await.ok();
-            bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
+            prompt_album(&bot, &msg, &dialogue).await?;
         }
 
         Command::Clearqueue => {
-            match deemix::clear_completed(&state).await {
-                Ok(0) => { bot.send_message(msg.chat.id, "📭 No completed downloads to clear.").await?; }
-                Ok(n) => { bot.send_message(msg.chat.id, format!("🧹 Cleared {} completed download(s) from queue.", n)).await?; }
-                Err(e) => { bot.send_message(msg.chat.id, format!("❌ Failed to clear queue: {}", e)).await?; }
-            }
+            do_clearqueue(&bot, &msg, &state).await?;
         }
 
         Command::Menu => {
-            let kb = main_keyboard(&state.config);
-            bot.send_message(msg.chat.id, "Choose an action:").reply_markup(kb).await?;
+            show_menu(&bot, &msg, &state).await?;
         }
 
         Command::Settings => {
-            let current_br = *state.current_bitrate.lock().await;
-            let kb = settings_keyboard(&user_settings, &state.config, current_br);
-            bot.send_message(msg.chat.id, "⚙️ Your settings — tap to toggle:").reply_markup(kb).await?;
+            show_settings(&bot, &msg, &state, &user_settings, "⚙️ Your settings — tap to toggle:").await?;
         }
 
         Command::Updatearl => {
-            dialogue.update(State::AwaitingArl).await.ok();
-            bot.send_message(msg.chat.id, "Please send your new Deezer ARL:")
-                .reply_markup(arl_cancel_keyboard())
-                .await?;
+            enter_arl(&bot, &msg, &dialogue).await?;
         }
     }
 
@@ -304,18 +360,12 @@ async fn handle_quality_change(
         *br = next_bitrate(*br);
         *br
     };
-
     let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
-    let kb = settings_keyboard(&updated, &state.config, new_bitrate);
-    bot.send_message(
-        msg.chat.id,
-        format!(
-            "🎚️ Download quality changed to: {}\n\n⚠️ This affects ALL users on this server.",
-            bitrate_label(new_bitrate)
-        ),
-    )
-    .reply_markup(kb)
-    .await?;
+    let text = format!(
+        "🎚️ Download quality changed to: {}\n\n⚠️ This affects ALL users on this server.",
+        bitrate_label(new_bitrate)
+    );
+    show_settings(bot, msg, state, &updated, &text).await?;
     Ok(())
 }
 
@@ -337,13 +387,11 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
     // ── Keyboard button presses ──
     match text.as_str() {
         BTN_SEARCH_TRACK => {
-            dialogue.update(State::AwaitingSearch).await.ok();
-            bot.send_message(msg.chat.id, "🔍 What song or artist are you looking for?").await?;
+            prompt_search(&bot, &msg, &dialogue).await?;
             return Ok(());
         }
         BTN_SEARCH_ALBUM => {
-            dialogue.update(State::AwaitingAlbum).await.ok();
-            bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
+            prompt_album(&bot, &msg, &dialogue).await?;
             return Ok(());
         }
         BTN_RECOGNIZE_SONG => {
@@ -371,51 +419,23 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             return Ok(());
         }
         BTN_CLEAR_QUEUE => {
-            match deemix::clear_completed(&state).await {
-                Ok(0) => { bot.send_message(msg.chat.id, "📭 No completed downloads to clear.").await?; }
-                Ok(n) => { bot.send_message(msg.chat.id, format!("🧹 Cleared {} completed download(s) from queue.", n)).await?; }
-                Err(e) => { bot.send_message(msg.chat.id, format!("❌ Failed to clear queue: {}", e)).await?; }
-            }
+            do_clearqueue(&bot, &msg, &state).await?;
             return Ok(());
         }
         BTN_SETTINGS => {
-            let current_br = *state.current_bitrate.lock().await;
-            let kb = settings_keyboard(&user_settings, &state.config, current_br);
-            bot.send_message(msg.chat.id, "⚙️ Your settings — tap to toggle:").reply_markup(kb).await?;
+            show_settings(&bot, &msg, &state, &user_settings, "⚙️ Your settings — tap to toggle:").await?;
             return Ok(());
         }
         BTN_BACK_MENU => {
-            let kb = main_keyboard(&state.config);
-            bot.send_message(msg.chat.id, "Choose an action:").reply_markup(kb).await?;
+            show_menu(&bot, &msg, &state).await?;
             return Ok(());
         }
         BTN_UPDATE_ARL => {
-            dialogue.update(State::AwaitingArl).await.ok();
-            bot.send_message(msg.chat.id, "Please send your new Deezer ARL:")
-                .reply_markup(arl_cancel_keyboard())
-                .await?;
+            enter_arl(&bot, &msg, &dialogue).await?;
             return Ok(());
         }
         BTN_HELP => {
-            bot.send_message(msg.chat.id,
-                "ℹ️ What I do?\n\n\
-I connect to your personal deemix server and queue music downloads. Just tell me what you want!\n\n\
-📥 Ways to request music:\n\
-• Type any song or artist name → search and pick\n\
-• Send a Deezer link → queued instantly\n\
-• Send a Spotify or Apple Music link → found on Deezer and queued\n\
-• Send a Spotify playlist link → every track is scanned and queued individually\n\
-• Send an audio recording → I'll recognize the song\n\n\
-🔧 Commands:\n\
-/menu — quick action buttons\n\
-/search — search for a track\n\
-/album — search for an album\n\
-/status — check download queue\n\
-/clearqueue — clear completed downloads from queue\n\
-/settings — your personal settings\n\
-/updatearl — update your Deezer ARL\n\n\
-💡 Tip: Just send a song name or link — no commands needed!"
-            ).await?;
+            bot.send_message(msg.chat.id, HELP_TEXT).await?;
             return Ok(());
         }
         // Settings toggles
@@ -424,14 +444,12 @@ I connect to your personal deemix server and queue music downloads. Just tell me
                 s.restart_notifications = !s.restart_notifications;
             });
             let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
-            let current_br = *state.current_bitrate.lock().await;
-            let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.restart_notifications { "ON" } else { "OFF" };
             let mut text = format!("{} {}", BTN_RESTART_NOTIF_ON, status);
             if let Err(e) = saved {
                 text.push_str(&format!("\n⚠️ Failed to save settings: {} — the change will be lost on restart.", e));
             }
-            bot.send_message(msg.chat.id, text).reply_markup(kb).await?;
+            show_settings(&bot, &msg, &state, &updated, &text).await?;
             return Ok(());
         }
         t if t.starts_with(BTN_QUALITY) => {
@@ -446,9 +464,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
     }
 
     // ── Link extraction ──
-    // Pull the first link out of the message (an explicit http(s) URL or a
-    // bare web address carrying a path) so the handlers below always receive
-    // a clean URL instead of the whole message text.
+    // Pull the first link out of the message (an explicit http(s) URL or a bare web address carrying a path) so the handlers below always receive a clean URL instead of the whole message text.
     let Some(link) = extract_link(&text) else {
         // No link found — treat the whole message as a search query
         do_search(&bot, &msg, &state, &text, "track").await?;
@@ -515,7 +531,7 @@ async fn handle_callback(
         if let Some(msg) = &q.message {
             let dialogue: MyDialogue = Dialogue::new(storage, msg.chat().id);
             let _ = dialogue.update(State::AwaitingArl).await;
-            bot.edit_message_text(msg.chat().id, msg.id(), "Please send your new Deezer ARL:")
+            bot.edit_message_text(msg.chat().id, msg.id(), ARL_PROMPT)
                 .reply_markup(arl_cancel_keyboard())
                 .await?;
         }
@@ -554,15 +570,70 @@ async fn handle_callback(
     Ok(())
 }
 
+// ── Shared Action Helpers ────────────────────────────────────────────────────
+// One home per bot action, shared by the /commands and the keyboard buttons.
+
+/// Switch the dialogue to track-search mode and ask for the query.
+async fn prompt_search(bot: &Bot, msg: &Message, dialogue: &MyDialogue) -> ResponseResult<()> {
+    dialogue.update(State::AwaitingSearch).await.ok();
+    bot.send_message(msg.chat.id, "🔍 What song or artist are you looking for?").await?;
+    Ok(())
+}
+
+/// Switch the dialogue to album-search mode and ask for the query.
+async fn prompt_album(bot: &Bot, msg: &Message, dialogue: &MyDialogue) -> ResponseResult<()> {
+    dialogue.update(State::AwaitingAlbum).await.ok();
+    bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
+    Ok(())
+}
+
+/// Switch the dialogue to ARL input mode (with the cancel button).
+async fn enter_arl(bot: &Bot, msg: &Message, dialogue: &MyDialogue) -> ResponseResult<()> {
+    dialogue.update(State::AwaitingArl).await.ok();
+    bot.send_message(msg.chat.id, ARL_PROMPT)
+        .reply_markup(arl_cancel_keyboard())
+        .await?;
+    Ok(())
+}
+
+/// Show the main menu keyboard (/menu and the "Back to menu" button).
+async fn show_menu(bot: &Bot, msg: &Message, state: &Arc<BotState>) -> ResponseResult<()> {
+    let kb = main_keyboard(&state.config);
+    bot.send_message(msg.chat.id, "Choose an action:").reply_markup(kb).await?;
+    Ok(())
+}
+
+/// Send `text` with the settings keyboard reflecting `s` and the runtime bitrate.
+async fn show_settings(
+    bot: &Bot,
+    msg: &Message,
+    state: &Arc<BotState>,
+    s: &users::UserSettings,
+    text: &str,
+) -> ResponseResult<()> {
+    let current_br = *state.current_bitrate.lock().await;
+    let kb = settings_keyboard(s, &state.config, current_br);
+    bot.send_message(msg.chat.id, text).reply_markup(kb).await?;
+    Ok(())
+}
+
+/// Clear completed downloads and report the outcome (/clearqueue and the button).
+async fn do_clearqueue(bot: &Bot, msg: &Message, state: &Arc<BotState>) -> ResponseResult<()> {
+    match deemix::clear_completed(&state).await {
+        Ok(0) => { bot.send_message(msg.chat.id, "📭 No completed downloads to clear.").await?; }
+        Ok(n) => { bot.send_message(msg.chat.id, format!("🧹 Cleared {} completed download(s) from queue.", n)).await?; }
+        Err(e) => { bot.send_message(msg.chat.id, format!("❌ Failed to clear queue: {}", e)).await?; }
+    }
+    Ok(())
+}
+
 // ── Core Helpers ──────────────────────────────────────────────────────────────
 async fn resolve_short_link(http: &Client, url: &str) -> Option<String> {
     let resp = http.head(url).send().await.ok()?;
     Some(resp.url().to_string())
 }
 
-/// Extract the first link from a user message: an explicit http(s) URL of any
-/// host, or a bare web address carrying a path (e.g. "deezer.com/track/123"),
-/// which gets an "https://" prefix added.
+/// Extract the first link from a user message: an explicit http(s) URL of any host, or a bare web address carrying a path (e.g. "deezer.com/track/123"), which gets an "https://" prefix added.
 fn extract_link(text: &str) -> Option<String> {
     if let Some(m) = ANY_URL_RE.find(text) {
         return Some(trim_trailing_punct(m.as_str()));
@@ -573,8 +644,7 @@ fn extract_link(text: &str) -> Option<String> {
         .map(|m| format!("https://{}", trim_trailing_punct(m.as_str())))
 }
 
-/// Strip trailing punctuation that belongs to the surrounding sentence, not
-/// the URL itself (e.g. "…link: https://…/xyz." or "(https://…/xyz)").
+/// Strip trailing punctuation that belongs to the surrounding sentence, not the URL itself (e.g. "…link: https://…/xyz." or "(https://…/xyz)").
 fn trim_trailing_punct(url: &str) -> String {
     url.trim_end_matches(['.', ',', ';', ':', '!', '?', ')', ']', '}', '>', '"', '\'', '«', '»'])
         .to_string()
@@ -604,8 +674,7 @@ async fn queue_url(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -
     Ok(())
 }
 
-/// Telegram truncates long button labels, so the message text carries the full
-/// numbered track list and the buttons reference the numbers.
+/// Telegram truncates long button labels, so the message text carries the full numbered track list and the buttons reference the numbers.
 pub(crate) fn build_search_results(results: &[serde_json::Value], icon: &str) -> (String, Vec<Vec<InlineKeyboardButton>>) {
     let mut listing = String::new();
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
@@ -625,9 +694,7 @@ pub(crate) fn build_search_results(results: &[serde_json::Value], icon: &str) ->
     (listing, buttons)
 }
 
-/// Search Deezer for `query` and render the outcome into message `msg_id`:
-/// `empty_text` on zero results, the numbered results with a Cancel button
-/// otherwise, or the search error.
+/// Search Deezer for `query` and render the outcome into message `msg_id`: `empty_text` on zero results, the numbered results with a Cancel button otherwise, or the search error.
 pub(crate) async fn search_and_show(
     bot: &Bot,
     state: &Arc<BotState>,
@@ -658,8 +725,7 @@ async fn do_search(bot: &Bot, msg: &Message, state: &Arc<BotState>, query: &str,
     Ok(())
 }
 
-/// Fetch queue counters from deemix and send them as a message. Shared by
-/// the /status command and the "📊 Check status" keyboard button.
+/// Fetch queue counters from deemix and send them as a message. Shared by the /status command and the "📊 Check status" keyboard button.
 async fn do_status(bot: &Bot, msg: &Message, state: &Arc<BotState>) -> ResponseResult<()> {
     match deemix::get_queue(state).await {
         Ok(q) => {

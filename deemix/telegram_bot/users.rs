@@ -6,17 +6,12 @@ use serde::{Deserialize, Serialize};
 pub struct UserSettings {
     #[serde(default)]
     pub restart_notifications: bool,
-    #[serde(default = "default_true")]
-    pub song_recognition: bool,
 }
-
-fn default_true() -> bool { true }
 
 impl Default for UserSettings {
     fn default() -> Self {
         Self {
             restart_notifications: false, // off by default
-            song_recognition: true,
         }
     }
 }

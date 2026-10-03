@@ -22,6 +22,7 @@ mod ws;
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
 use keyboards::{arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
+use voice::receive_voice_recognize;
 use streaming::{
     handle_streaming_link, SPOTIFY_ALBUM_RE,
     SPOTIFY_PLAYLIST_RE, SPOTIFY_TRACK_RE,
@@ -105,6 +106,7 @@ async fn main() {
                 .branch(dptree::case![State::AwaitingArl].endpoint(receive_arl))
                 .branch(dptree::case![State::AwaitingSearch].endpoint(receive_search))
                 .branch(dptree::case![State::AwaitingAlbum].endpoint(receive_album))
+                .branch(dptree::case![State::AwaitingVoiceRecognize].endpoint(receive_voice_recognize))
                 .branch(
                     Update::filter_message()
                         .filter_command::<Command>()
@@ -173,7 +175,7 @@ async fn handle_command(
 
     match cmd {
         Command::Start => {
-            let kb = main_keyboard();
+            let kb = main_keyboard(&state.config);
             bot.send_message(
                 msg.chat.id,
                 "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name or a link from Deezer, Spotify, or Apple Music, and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
@@ -202,8 +204,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
 /settings — manage your personal preferences\n\
 /updatearl — update your Deezer ARL\n\n\
 ⚙️ Settings (via /settings):\n\
-• Restart notifications — get notified when the bot restarts\n\
-• Song recognition — identify songs from voice recordings\n\n\
+• Restart notifications — get notified when the bot restarts\n\n\
 💡 Tip: You don't need commands — just send a song name or link directly!",
             )
             .await?;
@@ -234,7 +235,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
         }
 
         Command::Menu => {
-            let kb = main_keyboard();
+            let kb = main_keyboard(&state.config);
             bot.send_message(msg.chat.id, "Choose an action:").reply_markup(kb).await?;
         }
 
@@ -343,6 +344,26 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
             return Ok(());
         }
+        "🎵 Recognize song" => {
+            if !state.config.acrcloud_enabled() {
+                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured.").await?;
+            } else {
+                dialogue.update(State::AwaitingVoiceRecognize).await.ok();
+                bot.send_message(msg.chat.id, "🎵 Send me a voice recording of a song and I'll identify it.\n\n⏱ You have 60 seconds.").await?;
+                // Spawn timeout to reset dialogue after 60s
+                let dialogue_clone = dialogue.clone();
+                let chat_id = msg.chat.id;
+                let bot_clone = bot.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+                    if let Ok(Some(State::AwaitingVoiceRecognize)) = dialogue_clone.get().await {
+                        dialogue_clone.exit().await.ok();
+                        let _ = bot_clone.send_message(chat_id, "⏱ Song recognition timed out. Send a voice note or use /menu to start again.").await;
+                    }
+                });
+            }
+            return Ok(());
+        }
         "📊 Check status" => {
             do_status(&bot, &msg, &state).await?;
             return Ok(());
@@ -362,7 +383,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             return Ok(());
         }
         "🔙 Back to menu" => {
-            let kb = main_keyboard();
+            let kb = main_keyboard(&state.config);
             bot.send_message(msg.chat.id, "Choose an action:").reply_markup(kb).await?;
             return Ok(());
         }
@@ -413,21 +434,6 @@ I connect to your personal deemix server and queue music downloads. Just tell me
         }
         t if t.starts_with("🔒 Quality:") => {
             bot.send_message(msg.chat.id, "🔒 Download quality is locked by the administrator.").await?;
-            return Ok(());
-        }
-        t if t.starts_with("🎵 Song recognition:") => {
-            if !state.config.acrcloud_enabled() {
-                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add ACRCLOUD_ACCESS_KEY and ACRCLOUD_SECRET_KEY in the add-on options to enable it.").await?;
-                return Ok(());
-            }
-            users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
-                s.song_recognition = !s.song_recognition;
-            });
-            let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
-            let current_br = *state.current_bitrate.lock().await;
-            let kb = settings_keyboard(&updated, &state.config, current_br);
-            let status = if updated.song_recognition { "ON" } else { "OFF" };
-            bot.send_message(msg.chat.id, format!("🎵 Song recognition: {}", status)).reply_markup(kb).await?;
             return Ok(());
         }
         _ => {}

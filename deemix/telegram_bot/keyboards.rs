@@ -1,7 +1,8 @@
 //! Telegram reply/inline keyboard builders and bitrate helpers.
 //!
 //! The settings keyboard reflects the user's settings and the addon
-//! configuration; the main menu is static.
+//! configuration; the main menu shows the song recognition button when
+//! ACRCloud is configured.
 
 use teloxide::types::{
     InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup,
@@ -27,7 +28,6 @@ pub(crate) fn next_bitrate(current: u8) -> u8 {
 
 pub(crate) fn settings_keyboard(s: &UserSettings, config: &Config, bitrate: u8) -> KeyboardMarkup {
     let notif = if s.restart_notifications { "🔔 Restart notifications: ON" } else { "🔕 Restart notifications: OFF" };
-    let recog = if s.song_recognition && config.acrcloud_enabled() { "🎵 Song recognition: ON" } else { "🎵 Song recognition: OFF" };
     let bitrate_btn = if config.deemix_bitrate_lock {
         format!("🔒 Quality: {} (locked)", bitrate_label(bitrate))
     } else {
@@ -36,7 +36,6 @@ pub(crate) fn settings_keyboard(s: &UserSettings, config: &Config, bitrate: u8) 
 
     KeyboardMarkup::new(vec![
         vec![KeyboardButton::new(notif)],
-        vec![KeyboardButton::new(recog)],
         vec![KeyboardButton::new(bitrate_btn)],
         vec![KeyboardButton::new("🔑 Update ARL")],
         vec![KeyboardButton::new("🔙 Back to menu")],
@@ -48,20 +47,26 @@ pub(crate) fn arl_cancel_keyboard() -> InlineKeyboardMarkup {
     InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback("❌ Cancel", "cancel_arl")]])
 }
 
-pub(crate) fn main_keyboard() -> KeyboardMarkup {
-    KeyboardMarkup::new(vec![
+pub(crate) fn main_keyboard(config: &Config) -> KeyboardMarkup {
+    let mut rows = vec![
         vec![
             KeyboardButton::new("🔍 Search a track"),
             KeyboardButton::new("💿 Search an album"),
         ],
-        vec![
-            KeyboardButton::new("📊 Check status"),
-            KeyboardButton::new("🧹 Clear queue"),
-        ],
-        vec![
-            KeyboardButton::new("⚙️ Settings"),
-            KeyboardButton::new("ℹ️ Help"),
-        ],
-    ])
-    .resize_keyboard()
+    ];
+
+    if config.acrcloud_enabled() {
+        rows.push(vec![KeyboardButton::new("🎵 Recognize song")]);
+    }
+
+    rows.push(vec![
+        KeyboardButton::new("📊 Check status"),
+        KeyboardButton::new("🧹 Clear queue"),
+    ]);
+    rows.push(vec![
+        KeyboardButton::new("⚙️ Settings"),
+        KeyboardButton::new("ℹ️ Help"),
+    ]);
+
+    KeyboardMarkup::new(rows).resize_keyboard()
 }

@@ -1,7 +1,8 @@
 //! ACRCloud song recognition from Telegram voice notes.
 //!
-//! A received voice note is sent straight to ACRCloud — no choice dialogs.
-//! Enable by setting ACRCLOUD_HOST/ACCESS_KEY/SECRET in the add-on options.
+//! A received voice note is sent straight to ACRCloud; the 🎵 Recognize song
+//! menu button opens a 60 s dialogue for the same. Enable by setting
+//! ACRCLOUD_HOST/ACCESS_KEY/SECRET in the add-on options.
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use hmac::{Hmac, KeyInit, Mac};
@@ -13,7 +14,7 @@ use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::types::{FileId, InlineKeyboardButton, InlineKeyboardMarkup};
 
-use crate::{BotState, build_search_results, deemix, spotify, user_id_from_msg, users};
+use crate::{BotState, MyDialogue, build_search_results, deemix, spotify};
 
 /// Recognition result from ACRCloud.
 /// Prefer deezer_url → spotify_url (metadata refinement) → text search, in that order.
@@ -31,9 +32,6 @@ async fn recognize(
     audio_bytes: Vec<u8>,
     cfg: &crate::config::Config,
 ) -> Result<RecognitionResult, String> {
-    if !cfg.acrcloud_enabled() {
-        return Err("Song recognition is not configured.".to_string());
-    }
     if cfg.acrcloud_host.is_empty() {
         return Err("ACRCloud Host is not configured. Set it in the add-on options.".to_string());
     }
@@ -82,14 +80,16 @@ async fn recognize(
 
     let code = data["status"]["code"].as_i64().unwrap_or(-1);
     if code != 0 {
-        return Err(if code == 1001 {
-            "Song not recognized. Try a longer clip.".to_string()
-        } else {
-            format!(
+        return Err(match code {
+            1001 => "Song not recognized. Try a longer clip.".to_string(),
+            3001 => "ACRCloud rejected the Access Key. Check acrcloud_access_key in the add-on options.".to_string(),
+            3014 => "ACRCloud rejected the request signature. Check acrcloud_secret_key in the add-on options.".to_string(),
+            3003 => "ACRCloud quota exceeded. Try again later or upgrade your ACRCloud plan.".to_string(),
+            _ => format!(
                 "ACRCloud API error ({}): {}",
                 code,
                 data["status"]["msg"].as_str().unwrap_or("unknown")
-            )
+            ),
         });
     }
 
@@ -129,9 +129,8 @@ pub(crate) async fn handle_voice_message(
         Some(v) => v,
         None => return Ok(()),
     };
-    let user_settings = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
-    if !state.config.acrcloud_enabled() || !user_settings.song_recognition {
-        bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured or disabled. Use /settings to manage it.").await?;
+    if !state.config.acrcloud_enabled() {
+        bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured.").await?;
         return Ok(());
     }
 
@@ -265,4 +264,24 @@ pub(crate) async fn process_voice_recognize(
         }
     }
     Ok(())
+}
+
+// ── Dialogue Voice Receiver ─────────────────────────────────────────────────
+pub(crate) async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
+    dialogue.exit().await.ok();
+    let voice = match msg.voice() {
+        Some(v) => v,
+        None => {
+            bot.send_message(msg.chat.id, "⚠️ I expected a voice note. Use /menu to try again.").await?;
+            return Ok(());
+        }
+    };
+    let sent = bot.send_message(msg.chat.id, "🎵 Recognizing song...").await?;
+    // Download audio from Telegram
+    let Some(audio_bytes) =
+        download_voice_audio(&bot, &state, voice.file.id.clone(), msg.chat.id, sent.id).await?
+    else {
+        return Ok(());
+    };
+    process_voice_recognize(&bot, msg.chat.id, sent.id, audio_bytes, &state).await
 }

@@ -26,6 +26,7 @@ pub enum State {
     AwaitingArl,
     AwaitingSearch,
     AwaitingAlbum,
+    AwaitingVoiceRecognize,
 }
 
 pub(crate) type MyDialogue = Dialogue<State, InMemStorage<State>>;

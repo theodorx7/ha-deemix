@@ -36,7 +36,7 @@ async fn recognize(
         return Err("ACRCloud Host is not configured. Set it in the add-on options.".to_string());
     }
     if audio_bytes.len() >= 5 * 1024 * 1024 {
-        return Err("Voice note too long for song recognition.".to_string());
+        return Err("Audio recording too long for song recognition.".to_string());
     }
 
     // signature = base64(HMAC-SHA1(string_to_sign, access_secret))
@@ -272,7 +272,7 @@ pub(crate) async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<B
     let voice = match msg.voice() {
         Some(v) => v,
         None => {
-            bot.send_message(msg.chat.id, "⚠️ I expected a voice note. Use /menu to try again.").await?;
+            bot.send_message(msg.chat.id, "⚠️ I expected an audio recording. Use /menu to try again.").await?;
             return Ok(());
         }
     };

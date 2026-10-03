@@ -194,7 +194,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
 • Send a Deezer link (track, album, playlist, artist) → queued instantly\n\
 • Send a Spotify or Apple Music link (track or album) → found on Deezer and queued\n\
 • Send a Spotify playlist link → every track is scanned and queued individually\n\
-• Send a voice note → I'll recognize the song and offer it for download\n\n\
+• Send an audio recording → I'll recognize the song and offer it for download\n\n\
 🔧 All commands:\n\
 /menu — quick action buttons\n\
 /search — search for a track\n\
@@ -349,7 +349,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
                 bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured.").await?;
             } else {
                 dialogue.update(State::AwaitingVoiceRecognize).await.ok();
-                bot.send_message(msg.chat.id, "🎵 Send me a voice recording of a song and I'll identify it.\n\n⏱ You have 60 seconds.").await?;
+                bot.send_message(msg.chat.id, "🎵 Send me an audio recording of a song and I'll identify it.\n\n⏱ You have 60 seconds.").await?;
                 // Spawn timeout to reset dialogue after 60s
                 let dialogue_clone = dialogue.clone();
                 let chat_id = msg.chat.id;
@@ -358,7 +358,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
                     tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
                     if let Ok(Some(State::AwaitingVoiceRecognize)) = dialogue_clone.get().await {
                         dialogue_clone.exit().await.ok();
-                        let _ = bot_clone.send_message(chat_id, "⏱ Song recognition timed out. Send a voice note or use /menu to start again.").await;
+                        let _ = bot_clone.send_message(chat_id, "⏱ Song recognition timed out. Send an audio recording or use /menu to start again.").await;
                     }
                 });
             }
@@ -403,7 +403,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
 • Send a Deezer link → queued instantly\n\
 • Send a Spotify or Apple Music link → found on Deezer and queued\n\
 • Send a Spotify playlist link → every track is scanned and queued individually\n\
-• Send a voice note → I'll recognize the song\n\n\
+• Send an audio recording → I'll recognize the song\n\n\
 🔧 Commands:\n\
 /menu — quick action buttons\n\
 /search — search for a track\n\

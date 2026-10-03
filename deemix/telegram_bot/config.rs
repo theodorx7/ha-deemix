@@ -2,7 +2,7 @@
 //!
 //! - `Config`: per-run static configuration assembled from /config files
 //!   and ENV variables.
-//! - `BotState`: shared runtime state (users db, pending voices, bitrate, ARL, ws events).
+//! - `BotState`: shared runtime state (users db, bitrate, ARL, ws events).
 //! - `State` / `MyDialogue`: teloxide dialogue machine types.
 //! - `Command`: bot command enum used by dptree dispatching.
 
@@ -26,8 +26,6 @@ pub enum State {
     AwaitingArl,
     AwaitingSearch,
     AwaitingAlbum,
-    AwaitingVoiceTranscribe,
-    AwaitingVoiceRecognize,
 }
 
 pub(crate) type MyDialogue = Dialogue<State, InMemStorage<State>>;
@@ -41,8 +39,6 @@ pub struct Config {
     pub acrcloud_host: String,
     pub acrcloud_access_key: String,
     pub acrcloud_secret_key: String,
-    pub openai_api_key: String,
-    pub whisper_url: String,
     pub deemix_bitrate: u8,
     pub deemix_bitrate_lock: bool,
     pub whitelist_enabled: bool,
@@ -64,8 +60,6 @@ impl Config {
             acrcloud_host: env::var("ACRCLOUD_HOST").unwrap_or_default(),
             acrcloud_access_key: env::var("ACRCLOUD_ACCESS_KEY").unwrap_or_default(),
             acrcloud_secret_key: env::var("ACRCLOUD_SECRET_KEY").unwrap_or_default(),
-            openai_api_key: env::var("OPENAI_API_KEY").unwrap_or_default(),
-            whisper_url: env::var("WHISPER_URL").unwrap_or_default(),
             deemix_bitrate: env::var("BOT_BITRATE")
                 .unwrap_or_else(|_| "9".to_string())
                 .parse()
@@ -83,7 +77,6 @@ impl Config {
 
 
     pub fn acrcloud_enabled(&self) -> bool { !self.acrcloud_access_key.is_empty() && !self.acrcloud_secret_key.is_empty() }
-    pub fn whisper_enabled(&self) -> bool { !self.openai_api_key.is_empty() || !self.whisper_url.is_empty() }
     pub fn is_user_allowed(&self, user_id: i64) -> bool {
         !self.whitelist_enabled || self.whitelist_ids.contains(&user_id)
     }
@@ -114,7 +107,6 @@ pub struct BotState {
     pub config: Arc<Config>,
     pub http: Client,
     pub users: UsersDb,
-    pub pending_voices: Arc<Mutex<HashMap<String, (String, std::time::Instant)>>>, // voice key -> (file_id, stored_at), pruned on insert (see voice.rs)
     pub current_bitrate: Arc<Mutex<u8>>, // runtime-changeable bitrate
     pub current_arl: Arc<Mutex<String>>, // updated via /updatearl, used for auto re-login
     /// Recent deemix WS events (queueError / alreadyInQueue), consumed by add_to_queue_confirmed.
@@ -137,7 +129,6 @@ impl BotState {
             config: Arc::new(config),
             http,
             users,
-            pending_voices: Arc::new(Mutex::new(HashMap::new())),
             current_bitrate: Arc::new(Mutex::new(default_bitrate)),
             current_arl: Arc::new(Mutex::new(default_arl)),
             ws_events: Arc::new(Mutex::new(VecDeque::new())),

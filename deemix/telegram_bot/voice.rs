@@ -1,11 +1,7 @@
-//! Voice feature handlers.
+//! ACRCloud song recognition from Telegram voice notes.
 //!
-//! Supports three Whisper backends (priority order):
-//!   1. OpenAI remote API  — set OPENAI_API_KEY
-//!   2. Local compatible   — set WHISPER_URL (e.g. faster-whisper-server)
-//!   3. Disabled           — leave both empty
-//!
-//! ACRCloud song recognition  — set ACRCLOUD_ACCESS_KEY/SECRET
+//! A received voice note is sent straight to ACRCloud — no choice dialogs.
+//! Enable by setting ACRCLOUD_HOST/ACCESS_KEY/SECRET in the add-on options.
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use hmac::{Hmac, KeyInit, Mac};
@@ -13,60 +9,11 @@ use reqwest::multipart;
 use sha1::Sha1;
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use teloxide::prelude::*;
-use teloxide::types::{CallbackQuery, FileId, InlineKeyboardButton, InlineKeyboardMarkup};
+use teloxide::types::{FileId, InlineKeyboardButton, InlineKeyboardMarkup};
 
-use crate::{BotState, MyDialogue, build_search_results, deemix, search_and_show, spotify, user_id_from_msg, users};
-
-/// Entries are removed at press time; this TTL prunes never-pressed entries on insert so the map cannot grow unbounded.
-const PENDING_VOICE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
-
-/// Transcribe an OGG audio file using the configured Whisper backend.
-/// Returns the transcribed text or an error string.
-async fn transcribe(
-    http: &reqwest::Client,
-    audio_bytes: Vec<u8>,
-    openai_key: &str,
-    whisper_url: &str,
-) -> Result<String, String> {
-    // Determine endpoint and auth header
-    let (endpoint, auth) = if !openai_key.is_empty() {
-        (
-            "https://api.openai.com/v1/audio/transcriptions".to_string(),
-            format!("Bearer {}", openai_key),
-        )
-    } else if !whisper_url.is_empty() {
-        (whisper_url.to_string(), String::new())
-    } else {
-        return Err("Voice search is not configured.".to_string());
-    };
-
-    let part = multipart::Part::bytes(audio_bytes)
-        .file_name("audio.ogg")
-        .mime_str("audio/ogg")
-        .map_err(|e| e.to_string())?;
-
-    let form = multipart::Form::new()
-        .part("file", part)
-        .text("model", "whisper-1")
-        .text("response_format", "text");
-
-    let mut req = http.post(&endpoint).multipart(form);
-    if !auth.is_empty() {
-        req = req.header("Authorization", auth);
-    }
-
-    let resp = req.send().await.map_err(|e| e.to_string())?;
-
-    if !resp.status().is_success() {
-        return Err(format!("Whisper API error: {}", resp.status()));
-    }
-
-    let text = resp.text().await.map_err(|e| e.to_string())?;
-    Ok(text.trim().to_string())
-}
+use crate::{BotState, build_search_results, deemix, spotify, user_id_from_msg, users};
 
 /// Recognition result from ACRCloud.
 /// Prefer deezer_url → spotify_url (metadata refinement) → text search, in that order.
@@ -177,100 +124,25 @@ pub(crate) async fn handle_voice_message(
     bot: Bot,
     msg: Message,
     state: Arc<BotState>,
-    dialogue: MyDialogue,
 ) -> ResponseResult<()> {
-    dialogue.exit().await.ok(); // exit any active dialogue state
     let voice = match msg.voice() {
         Some(v) => v,
         None => return Ok(()),
     };
     let user_settings = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
-    let recog_on = state.config.acrcloud_enabled() && user_settings.song_recognition;
-    let whisper_on = state.config.whisper_enabled() && user_settings.voice_search;
-
-    if !recog_on && !whisper_on {
-        bot.send_message(msg.chat.id, "⚠️ Voice features are not configured or disabled. Use /settings to manage them.").await?;
+    if !state.config.acrcloud_enabled() || !user_settings.song_recognition {
+        bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured or disabled. Use /settings to manage it.").await?;
         return Ok(());
     }
 
-    // Store file_id with a chat-unique short key (message ids are only unique per chat) to stay under Telegram's 64 byte callback limit
-    let short_id = format!("{}:{}", msg.chat.id.0, msg.id.0);
-    {
-        let mut map = state.pending_voices.lock().await;
-        // Prune-on-insert (same pattern as the ws event buffer) keeps the map bounded without a background task
-        let now = std::time::Instant::now();
-        map.retain(|_, (_, stored_at)| now.duration_since(*stored_at) < PENDING_VOICE_TTL);
-        map.insert(short_id.clone(), (voice.file.id.to_string(), now));
-    }
-
-    // Build choice buttons based on what's enabled
-    let mut buttons: Vec<Vec<teloxide::types::InlineKeyboardButton>> = vec![];
-    if whisper_on {
-        buttons.push(vec![teloxide::types::InlineKeyboardButton::callback(
-            "🎤 Transcribe what I said",
-            format!("vt:{}", short_id),
-        )]);
-    }
-    if recog_on {
-        buttons.push(vec![teloxide::types::InlineKeyboardButton::callback(
-            "🎵 Recognize the song",
-            format!("vr:{}", short_id),
-        )]);
-    }
-    buttons.push(vec![teloxide::types::InlineKeyboardButton::callback("❌ Cancel", "cancel")]);
-
-    bot.send_message(msg.chat.id, "🎙️ What should I do with this voice note?")
-        .reply_markup(teloxide::types::InlineKeyboardMarkup::new(buttons))
-        .await?;
-    return Ok(());
-}
-
-// ── Voice Callback Handler ────────────────────────────────────────────────────
-pub(crate) async fn handle_voice_callback(
-    bot: &Bot,
-    q: &CallbackQuery,
-    data: &str,
-    state: &Arc<BotState>,
-) -> ResponseResult<()> {
-    let is_transcribe = data.starts_with("vt:");
-    let is_recognize = data.starts_with("vr:");
-    if is_transcribe || is_recognize {
-        if let Some(msg) = &q.message {
-            let short_id = &data[3..];
-
-            // Retrieve file_id from pending_voices map
-            let file_id = {
-                let map = state.pending_voices.lock().await;
-                map.get(short_id).map(|(f, _)| f.clone())
-            };
-            let file_id = match file_id {
-                Some(f) => f,
-                None => {
-                    bot.edit_message_text(msg.chat().id, msg.id(), "❌ Voice note expired. Please send it again.").await?;
-                    return Ok(());
-                }
-            };
-
-            bot.edit_message_text(msg.chat().id, msg.id(), "⏳ Processing voice note...").await?;
-
-            // The edit replaced the choice buttons — the entry can never be pressed again, so release it now
-            state.pending_voices.lock().await.remove(short_id);
-
-            // Download audio from Telegram
-            let Some(audio_bytes) =
-                download_voice_audio(&bot, state, FileId(file_id), msg.chat().id, msg.id()).await?
-            else {
-                return Ok(());
-            };
-
-            if is_transcribe {
-                process_voice_transcribe(&bot, msg.chat().id, msg.id(), audio_bytes, &state).await?;
-            } else {
-                process_voice_recognize(&bot, msg.chat().id, msg.id(), audio_bytes, &state).await?;
-            }
-        }
-    }
-    Ok(())
+    let sent = bot.send_message(msg.chat.id, "🎵 Recognizing song...").await?;
+    // Download audio from Telegram
+    let Some(audio_bytes) =
+        download_voice_audio(&bot, &state, voice.file.id.clone(), msg.chat.id, sent.id).await?
+    else {
+        return Ok(());
+    };
+    process_voice_recognize(&bot, msg.chat.id, sent.id, audio_bytes, &state).await
 }
 
 /// Download a Telegram voice/audio file's bytes, reporting any failure by editing the status message. `None` = the user has already been notified,
@@ -308,32 +180,7 @@ async fn download_voice_audio(
     }
 }
 
-/// Core transcription logic shared by dialogue receiver and callback handler.
-/// `status_msg_id` is the message being edited for progress updates.
-pub(crate) async fn process_voice_transcribe(
-    bot: &Bot,
-    chat_id: teloxide::types::ChatId,
-    status_msg_id: teloxide::types::MessageId,
-    audio_bytes: Vec<u8>,
-    state: &Arc<BotState>,
-) -> ResponseResult<()> {
-    match transcribe(&state.http, audio_bytes, &state.config.openai_api_key, &state.config.whisper_url).await {
-        Ok(text) if text.is_empty() => {
-            bot.edit_message_text(chat_id, status_msg_id, "😕 Could not transcribe anything. Try speaking more clearly.").await?;
-        }
-        Ok(text) => {
-            bot.edit_message_text(chat_id, status_msg_id, format!("🔍 I heard: {}\nSearching...", text)).await?;
-            let sent = bot.send_message(chat_id, format!("Results for: {}", text)).await?;
-            search_and_show(bot, state, chat_id, sent.id, &text, "track", &format!("😕 No results for: {}", text)).await?;
-        }
-        Err(e) => {
-            bot.edit_message_text(chat_id, status_msg_id, format!("❌ Transcription failed: {}", e)).await?;
-        }
-    }
-    Ok(())
-}
-
-/// Core song recognition logic shared by dialogue receiver and callback handler.
+/// Core song recognition logic.
 /// Implements the cascade: user confirmation of the recognized Deezer track → Spotify metadata → text search.
 pub(crate) async fn process_voice_recognize(
     bot: &Bot,
@@ -418,43 +265,4 @@ pub(crate) async fn process_voice_recognize(
         }
     }
     Ok(())
-}
-
-// ── Dialogue Voice Receivers ───────────────────────────────────────────────────────────
-pub(crate) async fn receive_voice_transcribe(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
-    dialogue.exit().await.ok();
-    let voice = match msg.voice() {
-        Some(v) => v,
-        None => {
-            bot.send_message(msg.chat.id, "⚠️ I expected a voice note. Use /menu to try again.").await?;
-            return Ok(());
-        }
-    };
-    let sent = bot.send_message(msg.chat.id, "🎤 Transcribing...").await?;
-    // Download audio from Telegram
-    let Some(audio_bytes) =
-        download_voice_audio(&bot, &state, voice.file.id.clone(), msg.chat.id, sent.id).await?
-    else {
-        return Ok(());
-    };
-    process_voice_transcribe(&bot, msg.chat.id, sent.id, audio_bytes, &state).await
-}
-
-pub(crate) async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: MyDialogue) -> ResponseResult<()> {
-    dialogue.exit().await.ok();
-    let voice = match msg.voice() {
-        Some(v) => v,
-        None => {
-            bot.send_message(msg.chat.id, "⚠️ I expected a voice note. Use /menu to try again.").await?;
-            return Ok(());
-        }
-    };
-    let sent = bot.send_message(msg.chat.id, "🎵 Recognizing song...").await?;
-    // Download audio from Telegram
-    let Some(audio_bytes) =
-        download_voice_audio(&bot, &state, voice.file.id.clone(), msg.chat.id, sent.id).await?
-    else {
-        return Ok(());
-    };
-    process_voice_recognize(&bot, msg.chat.id, sent.id, audio_bytes, &state).await
 }

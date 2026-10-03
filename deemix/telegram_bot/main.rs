@@ -22,7 +22,6 @@ mod ws;
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
 use keyboards::{arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
-use voice::{receive_voice_recognize, receive_voice_transcribe};
 use streaming::{
     handle_streaming_link, SPOTIFY_ALBUM_RE,
     SPOTIFY_PLAYLIST_RE, SPOTIFY_TRACK_RE,
@@ -106,8 +105,6 @@ async fn main() {
                 .branch(dptree::case![State::AwaitingArl].endpoint(receive_arl))
                 .branch(dptree::case![State::AwaitingSearch].endpoint(receive_search))
                 .branch(dptree::case![State::AwaitingAlbum].endpoint(receive_album))
-                .branch(dptree::case![State::AwaitingVoiceTranscribe].endpoint(receive_voice_transcribe))
-                .branch(dptree::case![State::AwaitingVoiceRecognize].endpoint(receive_voice_recognize))
                 .branch(
                     Update::filter_message()
                         .filter_command::<Command>()
@@ -176,7 +173,7 @@ async fn handle_command(
 
     match cmd {
         Command::Start => {
-            let kb = main_keyboard(&user_settings, &state.config);
+            let kb = main_keyboard();
             bot.send_message(
                 msg.chat.id,
                 "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name or a link from Deezer, Spotify, or Apple Music, and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
@@ -195,7 +192,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
 • Send a Deezer link (track, album, playlist, artist) → queued instantly\n\
 • Send a Spotify or Apple Music link (track or album) → found on Deezer and queued\n\
 • Send a Spotify playlist link → every track is scanned and queued individually\n\
-• Send a voice note → transcribe what you said or recognize the song\n\n\
+• Send a voice note → I'll recognize the song and offer it for download\n\n\
 🔧 All commands:\n\
 /menu — quick action buttons\n\
 /search — search for a track\n\
@@ -206,7 +203,6 @@ I connect to your personal deemix server and queue music downloads for you. Just
 /updatearl — update your Deezer ARL\n\n\
 ⚙️ Settings (via /settings):\n\
 • Restart notifications — get notified when the bot restarts\n\
-• Voice search — transcribe voice notes to search\n\
 • Song recognition — identify songs from voice recordings\n\n\
 💡 Tip: You don't need commands — just send a song name or link directly!",
             )
@@ -238,7 +234,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
         }
 
         Command::Menu => {
-            let kb = main_keyboard(&user_settings, &state.config);
+            let kb = main_keyboard();
             bot.send_message(msg.chat.id, "Choose an action:").reply_markup(kb).await?;
         }
 
@@ -327,7 +323,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
 
     // ── Voice note handling ──
     if msg.voice().is_some() {
-        return voice::handle_voice_message(bot, msg, state, dialogue).await;
+        return voice::handle_voice_message(bot, msg, state).await;
     }
 
     let text = match msg.text() {
@@ -345,50 +341,6 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
         "💿 Search an album" => {
             dialogue.update(State::AwaitingAlbum).await.ok();
             bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
-            return Ok(());
-        }
-        "🎤 Voice search" => {
-            if !state.config.whisper_enabled() || !user_settings.voice_search {
-                bot.send_message(msg.chat.id, "⚠️ Voice search is not configured. Add OPENAI_API_KEY or WHISPER_URL in the add-on options, or enable it in /settings.").await?;
-            } else {
-                dialogue.update(State::AwaitingVoiceTranscribe).await.ok();
-                bot.send_message(msg.chat.id, "🎤 Send me a voice note and I'll transcribe what you said and search for it.
-
-⏱ You have 60 seconds.").await?;
-                // Spawn timeout to reset dialogue after 60s
-                let dialogue_clone = dialogue.clone();
-                let chat_id = msg.chat.id;
-                let bot_clone = bot.clone();
-                tokio::spawn(async move {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
-                    if let Ok(Some(State::AwaitingVoiceTranscribe)) = dialogue_clone.get().await {
-                        dialogue_clone.exit().await.ok();
-                        let _ = bot_clone.send_message(chat_id, "⏱ Voice search timed out. Send a voice note or use /menu to start again.").await;
-                    }
-                });
-            }
-            return Ok(());
-        }
-        "🎵 Recognize song" => {
-            if !state.config.acrcloud_enabled() || !user_settings.song_recognition {
-                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured. Add ACRCLOUD_ACCESS_KEY and ACRCLOUD_SECRET_KEY in the add-on options, or enable it in /settings.").await?;
-            } else {
-                dialogue.update(State::AwaitingVoiceRecognize).await.ok();
-                bot.send_message(msg.chat.id, "🎵 Send me a voice recording of a song and I'll identify it.
-
-⏱ You have 60 seconds.").await?;
-                // Spawn timeout to reset dialogue after 60s
-                let dialogue_clone = dialogue.clone();
-                let chat_id = msg.chat.id;
-                let bot_clone = bot.clone();
-                tokio::spawn(async move {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
-                    if let Ok(Some(State::AwaitingVoiceRecognize)) = dialogue_clone.get().await {
-                        dialogue_clone.exit().await.ok();
-                        let _ = bot_clone.send_message(chat_id, "⏱ Song recognition timed out. Send a voice note or use /menu to start again.").await;
-                    }
-                });
-            }
             return Ok(());
         }
         "📊 Check status" => {
@@ -410,7 +362,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             return Ok(());
         }
         "🔙 Back to menu" => {
-            let kb = main_keyboard(&user_settings, &state.config);
+            let kb = main_keyboard();
             bot.send_message(msg.chat.id, "Choose an action:").reply_markup(kb).await?;
             return Ok(());
         }
@@ -430,7 +382,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
 • Send a Deezer link → queued instantly\n\
 • Send a Spotify or Apple Music link → found on Deezer and queued\n\
 • Send a Spotify playlist link → every track is scanned and queued individually\n\
-• Send a voice note → transcribe or recognize\n\n\
+• Send a voice note → I'll recognize the song\n\n\
 🔧 Commands:\n\
 /menu — quick action buttons\n\
 /search — search for a track\n\
@@ -453,21 +405,6 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.restart_notifications { "ON" } else { "OFF" };
             bot.send_message(msg.chat.id, format!("🔔 Restart notifications: {}", status)).reply_markup(kb).await?;
-            return Ok(());
-        }
-        t if t.starts_with("🎤 Voice search:") => {
-            if !state.config.whisper_enabled() {
-                bot.send_message(msg.chat.id, "⚠️ Voice search is not configured. Add OPENAI_API_KEY in the add-on options to enable it.").await?;
-                return Ok(());
-            }
-            users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
-                s.voice_search = !s.voice_search;
-            });
-            let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
-            let current_br = *state.current_bitrate.lock().await;
-            let kb = settings_keyboard(&updated, &state.config, current_br);
-            let status = if updated.voice_search { "ON" } else { "OFF" };
-            bot.send_message(msg.chat.id, format!("🎤 Voice search: {}", status)).reply_markup(kb).await?;
             return Ok(());
         }
         t if t.starts_with("🎚️ Quality:") => {
@@ -602,10 +539,6 @@ async fn handle_callback(
         }
     }
 
-    // ── Voice callbacks ──
-    if data.starts_with("vt:") || data.starts_with("vr:") {
-        voice::handle_voice_callback(&bot, &q, &data, &state).await?;
-    }
     Ok(())
 }
 

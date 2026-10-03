@@ -452,12 +452,8 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             show_settings(&bot, &msg, &state, &updated, &text).await?;
             return Ok(());
         }
-        t if t.starts_with(BTN_QUALITY) => {
+        t if t.starts_with(BTN_QUALITY) || t.starts_with(BTN_QUALITY_LOCKED) => {
             handle_quality_change(&bot, &msg, &state).await?;
-            return Ok(());
-        }
-        t if t.starts_with(BTN_QUALITY_LOCKED) => {
-            bot.send_message(msg.chat.id, "🔒 Download quality is locked by the administrator.").await?;
             return Ok(());
         }
         _ => {}

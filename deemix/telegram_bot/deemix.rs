@@ -150,6 +150,10 @@ pub async fn add_to_queue_confirmed(
     artist: bool,
     chat_id: i64,
 ) -> Result<QueueOutcome, String> {
+    // Serialize confirmation windows: WS events carry no request identifier, so an overlapping
+    // request's drain could consume or discard this request's events. Must be acquired BEFORE
+    // `started` so every event with ts >= started belongs to this request.
+    let _confirm_guard = state.queue_confirm_lock.lock().await;
     let started = Instant::now();
     let added = add_to_queue(state, url).await?;
 

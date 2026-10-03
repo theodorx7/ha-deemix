@@ -112,6 +112,10 @@ pub struct BotState {
     pub current_arl: Arc<Mutex<String>>, // updated via /updatearl, used for auto re-login
     /// Recent deemix WS events (queueError / alreadyInQueue), consumed by add_to_queue_confirmed.
     pub ws_events: Arc<Mutex<VecDeque<WsEvent>>>,
+    /// Serializes add_to_queue_confirmed windows (request → WS_GRACE → drain): WS events carry no request
+    /// identifier, so overlapping windows of concurrent chats could consume or discard each other's events.
+    /// Acquired before the window's start timestamp.
+    pub queue_confirm_lock: Arc<Mutex<()>>,
     /// uuid → (chat id that requested the object, object title). Lets the ws listener forward download errors to the initiator's chat only;
     /// WebUI-initiated items are absent and are never forwarded.
     pub queue_initiators: Arc<Mutex<HashMap<String, (i64, String)>>>,
@@ -133,6 +137,7 @@ impl BotState {
             current_bitrate: Arc::new(Mutex::new(default_bitrate)),
             current_arl: Arc::new(Mutex::new(default_arl)),
             ws_events: Arc::new(Mutex::new(VecDeque::new())),
+            queue_confirm_lock: Arc::new(Mutex::new(())),
             queue_initiators: Arc::new(Mutex::new(HashMap::new())),
         }
     }

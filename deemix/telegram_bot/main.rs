@@ -21,7 +21,12 @@ mod ws;
 
 pub(crate) use config::{BotState, MyDialogue};
 use config::{Command, Config, State};
-use keyboards::{arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard};
+use keyboards::{
+    arl_cancel_keyboard, bitrate_label, main_keyboard, next_bitrate, settings_keyboard,
+    BTN_BACK_MENU, BTN_CHECK_STATUS, BTN_CLEAR_QUEUE, BTN_HELP, BTN_QUALITY,
+    BTN_QUALITY_LOCKED, BTN_RECOGNIZE_SONG, BTN_RESTART_NOTIF_OFF, BTN_RESTART_NOTIF_ON,
+    BTN_SEARCH_ALBUM, BTN_SEARCH_TRACK, BTN_SETTINGS, BTN_UPDATE_ARL,
+};
 use voice::receive_voice_recognize;
 use streaming::{
     handle_streaming_link, SPOTIFY_ALBUM_RE,
@@ -331,17 +336,17 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
 
     // ── Keyboard button presses ──
     match text.as_str() {
-        "🔍 Search a track" => {
+        BTN_SEARCH_TRACK => {
             dialogue.update(State::AwaitingSearch).await.ok();
             bot.send_message(msg.chat.id, "🔍 What song or artist are you looking for?").await?;
             return Ok(());
         }
-        "💿 Search an album" => {
+        BTN_SEARCH_ALBUM => {
             dialogue.update(State::AwaitingAlbum).await.ok();
             bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
             return Ok(());
         }
-        "🎵 Recognize song" => {
+        BTN_RECOGNIZE_SONG => {
             if !state.config.acrcloud_enabled() {
                 bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured.").await?;
             } else {
@@ -361,11 +366,11 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             }
             return Ok(());
         }
-        "📊 Check status" => {
+        BTN_CHECK_STATUS => {
             do_status(&bot, &msg, &state).await?;
             return Ok(());
         }
-        "🧹 Clear queue" => {
+        BTN_CLEAR_QUEUE => {
             match deemix::clear_completed(&state).await {
                 Ok(0) => { bot.send_message(msg.chat.id, "📭 No completed downloads to clear.").await?; }
                 Ok(n) => { bot.send_message(msg.chat.id, format!("🧹 Cleared {} completed download(s) from queue.", n)).await?; }
@@ -373,25 +378,25 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             }
             return Ok(());
         }
-        "⚙️ Settings" => {
+        BTN_SETTINGS => {
             let current_br = *state.current_bitrate.lock().await;
             let kb = settings_keyboard(&user_settings, &state.config, current_br);
             bot.send_message(msg.chat.id, "⚙️ Your settings — tap to toggle:").reply_markup(kb).await?;
             return Ok(());
         }
-        "🔙 Back to menu" => {
+        BTN_BACK_MENU => {
             let kb = main_keyboard(&state.config);
             bot.send_message(msg.chat.id, "Choose an action:").reply_markup(kb).await?;
             return Ok(());
         }
-        "🔑 Update ARL" => {
+        BTN_UPDATE_ARL => {
             dialogue.update(State::AwaitingArl).await.ok();
             bot.send_message(msg.chat.id, "Please send your new Deezer ARL:")
                 .reply_markup(arl_cancel_keyboard())
                 .await?;
             return Ok(());
         }
-        "ℹ️ Help" => {
+        BTN_HELP => {
             bot.send_message(msg.chat.id,
                 "ℹ️ What I do?\n\n\
 I connect to your personal deemix server and queue music downloads. Just tell me what you want!\n\n\
@@ -414,7 +419,7 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             return Ok(());
         }
         // Settings toggles
-        t if t.starts_with("🔔 Restart notifications:") || t.starts_with("🔕 Restart notifications:") => {
+        t if t.starts_with(BTN_RESTART_NOTIF_ON) || t.starts_with(BTN_RESTART_NOTIF_OFF) => {
             let saved = users::update(&state.users, &state.config.users_file, user_id_from_msg(&msg), |s| {
                 s.restart_notifications = !s.restart_notifications;
             });
@@ -422,18 +427,18 @@ I connect to your personal deemix server and queue music downloads. Just tell me
             let current_br = *state.current_bitrate.lock().await;
             let kb = settings_keyboard(&updated, &state.config, current_br);
             let status = if updated.restart_notifications { "ON" } else { "OFF" };
-            let mut text = format!("🔔 Restart notifications: {}", status);
+            let mut text = format!("{} {}", BTN_RESTART_NOTIF_ON, status);
             if let Err(e) = saved {
                 text.push_str(&format!("\n⚠️ Failed to save settings: {} — the change will be lost on restart.", e));
             }
             bot.send_message(msg.chat.id, text).reply_markup(kb).await?;
             return Ok(());
         }
-        t if t.starts_with("🎚️ Quality:") => {
+        t if t.starts_with(BTN_QUALITY) => {
             handle_quality_change(&bot, &msg, &state).await?;
             return Ok(());
         }
-        t if t.starts_with("🔒 Quality:") => {
+        t if t.starts_with(BTN_QUALITY_LOCKED) => {
             bot.send_message(msg.chat.id, "🔒 Download quality is locked by the administrator.").await?;
             return Ok(());
         }

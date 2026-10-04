@@ -17,8 +17,7 @@
 
 [English](https://github.com/theodorx7/ha-deemix/blob/main/README.md) | [Russian](https://github.com/theodorx7/ha-deemix/blob/main/README_RU.md)
 
-
-Данный проект – это полноценная интеграция оригинального и немодифицированного [Deemix](https://github.com/bambanah/deemix) в качестве приложения для Home Assistant.
+Проект обеспечивает полноценную работу оригинального (немодифицированного) [Deemix](https://github.com/bambanah/deemix) в виде приложения для Home Assistant.
 
 
 

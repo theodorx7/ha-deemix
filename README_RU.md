@@ -18,12 +18,11 @@
 [English](https://github.com/theodorx7/ha-deemix/blob/main/README.md) | [Russian](https://github.com/theodorx7/ha-deemix/blob/main/README_RU.md)
 
 
-Проект основан на оригинальном и немодифицированном [Deemix](https://github.com/bambanah/deemix). 
+Данный проект — это полноценная интеграция оригинального и немодифицированного [Deemix](https://github.com/bambanah/deemix) в качестве приложения для Home Assistant.
 
 
 
 ## Функции
-- Полноценная интеграция в качестве приложения для Home Assistant 
 - Скачивание музыки во FLAC (lossless) и MP3 (320 kbps / 128 kbps) – требуется аккаунт Deezer (для скачивания FLAC и MP3 320 необходима платная подписка)
 - Пакетное скачивание:
   - один или несколько треков выборочно из альбома

@@ -35,6 +35,7 @@ FROM ghcr.io/bambanah/deemix:v4.7.0 AS deemix-builder
 COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
 COPY webui-patch/index.html /app/packages/webui/index.html
 COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
+COPY webui-patch/src/client/use/theme.ts /app/packages/webui/src/client/use/theme.ts
 COPY webui-patch/src/client/utils/socket.ts /app/packages/webui/src/client/utils/socket.ts
 COPY webui-patch/src/client/styles/css/global.css /app/packages/webui/src/client/styles/css/global.css
 

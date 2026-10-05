@@ -82,7 +82,7 @@ https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repositor
 ```yaml
 env_vars:
   - name: BOT_BITRATE
-    value: "2"
+    value: "3"
 ```
 
 - Конфиги Deemix и Telegram-бота хранятся по пути: addon_configs/`<your app slug>`_deemix/config.json.  

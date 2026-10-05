@@ -101,7 +101,7 @@ env_vars:
 	Audio Source -> Recorded Audio (Audio captured via microphone or noisy audio files)  
 	Audio Engine -> Audio Fingerprinting  
 	Buckets -> ACRCloud Music  
-	The 3rd Party ID Integration -> "spotify" + "deezer" + "isrc"  
+	The 3rd Party ID Integration -> `spotify` + `deezer` + `isrc`   
 
 ⚠️ КРИТИЧНО: в опции «3rd Party ID Integration» нужно отметить галочкой 3 варианта: `deezer`, `spotify`, а также `isrc`.
 

@@ -69,10 +69,10 @@ const HELP_TEXT: &str =
 "ℹ️ I connect to your Deemix server and add music downloads to the queue.\n\n\
 📥 Ways to request music:\n\
 • Send a Deezer link (track, album, playlist, artist) → queued instantly\n\
-• Send an audio recording → I'll recognize the song and offer it for download\n\n\
+• Send an audio recording → I'll recognize the song and offer it for download\n\
 • Send a Spotify or Apple Music link (track or album) → found on Deezer and queued\n\
 • Send a Spotify playlist link → every track is scanned and queued individually\n\
-• Type any song or artist name → search and pick from results\n\
+• Type any song or artist name → search and pick from results\n\n\
 🔧 All commands:\n\
 /menu — quick action buttons\n\
 /search — search for a track\n\
@@ -83,8 +83,8 @@ const HELP_TEXT: &str =
 /settings — manage your personal preferences\n\
 /updatearl — update your Deezer ARL\n\n\
 ⚙️ Settings (via /settings):\n\
-• Restart notifications — get notified when Deemix restarts\n\n\
-• Download quality: FLAC → MP3 320 → MP3 128\n\
+• Restart notifications — get notified when Deemix restarts\n\
+• Download quality: FLAC → MP3 320 → MP3 128\n\n\
 💡 Tip: You don't need commands — just send a song name or link directly!";
 
 /// Label for a deemix bitrate value (9 = FLAC, 3/1 = MP3).

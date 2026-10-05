@@ -362,7 +362,7 @@ async fn handle_quality_change(
     };
     let updated = users::get_or_create(&state.users, &state.config.users_file, user_id_from_msg(&msg));
     let text = format!(
-        "🎚️ Download quality changed to: {}\n\n⚠️ This affects ALL users on this server.",
+        "🎚️ Download quality changed to: {}\n\n⚠️ This affects ALL users of this bot.",
         bitrate_label(new_bitrate)
     );
     show_settings(bot, msg, state, &updated, &text).await?;

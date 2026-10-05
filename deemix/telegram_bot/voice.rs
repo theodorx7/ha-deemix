@@ -272,7 +272,7 @@ pub(crate) async fn receive_voice_recognize(bot: Bot, msg: Message, state: Arc<B
     let voice = match msg.voice() {
         Some(v) => v,
         None => {
-            bot.send_message(msg.chat.id, "⚠️ I expected an audio recording. Use /menu to try again.").await?;
+            bot.send_message(msg.chat.id, "⚠️ I expected an audio recording. Try again.").await?;
             return Ok(());
         }
     };

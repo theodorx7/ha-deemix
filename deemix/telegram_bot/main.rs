@@ -68,11 +68,11 @@ const ARL_PROMPT: &str = "Please send your new Deezer ARL:";
 const HELP_TEXT: &str = "ℹ️ What I do?\n\n\
 I connect to your personal deemix server and queue music downloads for you. Just tell me what you want!\n\n\
 📥 Ways to request music:\n\
-• Type any song or artist name → search and pick from results\n\
 • Send a Deezer link (track, album, playlist, artist) → queued instantly\n\
+• Send an audio recording → I'll recognize the song and offer it for download\n\n\
 • Send a Spotify or Apple Music link (track or album) → found on Deezer and queued\n\
 • Send a Spotify playlist link → every track is scanned and queued individually\n\
-• Send an audio recording → I'll recognize the song and offer it for download\n\n\
+• Type any song or artist name → search and pick from results\n\
 🔧 All commands:\n\
 /menu — quick action buttons\n\
 /search — search for a track\n\
@@ -82,7 +82,7 @@ I connect to your personal deemix server and queue music downloads for you. Just
 /settings — manage your personal preferences\n\
 /updatearl — update your Deezer ARL\n\n\
 ⚙️ Settings (via /settings):\n\
-• Restart notifications — get notified when the bot restarts\n\n\
+• Restart notifications — get notified when Deemix restarts\n\n\
 💡 Tip: You don't need commands — just send a song name or link directly!";
 
 /// Label for a deemix bitrate value (9 = FLAC, 3/1 = MP3).

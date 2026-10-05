@@ -66,6 +66,29 @@ https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repositor
 
 
 
+## Конфигурация
+КАК ОТКРЫТЬ ПАНЕЛЬ: 
+Через Ingress (включите пункт "Показывать на боковой панели")
+или открывать по IP адресу на котором работает Home Assistant, порт по умолчанию 6595 (только HTTP протокол)
+Например: http://192.168.1.30:6595
+
+
+ПРАВА 1000:1000
+Аддон по умолчанию запускается с правами 1000:1000.  
+В случае индивидуальной конфигурации можно указать свои PUID и PGID через env_vars
+
+Переменная для переопределения качества загрузок через Telegram-бот: `BOT_BITRATE`
+env_vars:
+  - name: BOT_BITRATE
+    value: "3"  # "1"=128, "3"=320, "9"=FLAC
+По умолчанию качество FLAC (9)
+	
+- Конфиги Deemix и Telegram-бота хранятся по пути: addon_configs/`<your app slug>`_deemix/config.json
+
+- Download Path настроенный через env_vars в настройках аддона применяется только при первом запуске, далее меняется а только через WebUI Deemix
+
+
+
 ## Настройка распознавания треков — ACRCloud  
 Зарегистрируйте аккаунт в сервисе ACRCloud -> https://console.acrcloud.com  
 Откройте ACRCloud Console  -> Раздел "Audio & Video Recognition":  

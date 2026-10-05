@@ -17,7 +17,7 @@
 
 [English](https://github.com/theodorx7/ha-deemix/blob/main/README.md) | [Russian](https://github.com/theodorx7/ha-deemix/blob/main/README_RU.md)
 
-Проект обеспечивает полноценную работу оригинального (немодифицированного) [Deemix](https://github.com/bambanah/deemix) в виде приложения для Home Assistant.
+Проект обеспечивает полноценную работу оригинального (немодифицированного) [Deemix](https://github.com/bambanah/deemix) в виде приложения для Home Assistant и расширяет возможности с помощью Telegram-бота.
 
 
 

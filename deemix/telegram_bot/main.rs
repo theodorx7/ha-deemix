@@ -84,7 +84,7 @@ const HELP_TEXT: &str =
 /updatearl — update your Deezer ARL\n\n\
 ⚙️ Settings (via /settings):\n\
 • Restart notifications — get notified when Deemix restarts\n\
-• Download quality: FLAC → MP3 320 → MP3 128\n\n\
+• Quality: FLAC → MP3 320 → MP3 128\n\n\
 💡 Tip: You don't need commands — just send a song name or link directly!";
 
 /// Label for a deemix bitrate value (9 = FLAC, 3/1 = MP3).

@@ -105,7 +105,7 @@ env_vars:
 	Buckets -> ACRCloud Music  
 	The 3rd Party ID Integration -> `spotify` + `deezer` + `isrc`   
 
-⚠️ КРИТИЧНО: в опции «3rd Party ID Integration» нужно отметить галочкой 3 варианта: `deezer`, `spotify`, а также `isrc`.
+⚠️ВАЖНО: в опции «3rd Party ID Integration» нужно обязательно отметить галочкой 3 варианта: `deezer`, `spotify`, а также `isrc`.
 
 4. После создания проекта в консоли ACRCloud появятся данные "Host", "Access Key", "Access Secret", заполните ими соответствующие поля в опциях аддона:  
 `ACRCloud Host`  

@@ -65,8 +65,8 @@ const BTN_QUALITY_LOCKED: &str = "🔒 Quality:";
 
 const ARL_PROMPT: &str = "Please send your new Deezer ARL:";
 
-const HELP_TEXT: &str = "ℹ️ What I do?\n\n\
-I connect to your personal deemix server and queue music downloads for you. Just tell me what you want!\n\n\
+const HELP_TEXT: &str =
+"ℹ️ I connect to your Deemix server and add music downloads to the queue.\n\n\
 📥 Ways to request music:\n\
 • Send a Deezer link (track, album, playlist, artist) → queued instantly\n\
 • Send an audio recording → I'll recognize the song and offer it for download\n\n\
@@ -77,12 +77,14 @@ I connect to your personal deemix server and queue music downloads for you. Just
 /menu — quick action buttons\n\
 /search — search for a track\n\
 /album — search for an album\n\
+/recognize — recognize a song from an audio clip\n\
 /status — check download queue\n\
 /clearqueue — clear completed downloads from queue\n\
 /settings — manage your personal preferences\n\
 /updatearl — update your Deezer ARL\n\n\
 ⚙️ Settings (via /settings):\n\
 • Restart notifications — get notified when Deemix restarts\n\n\
+• Download quality: FLAC → MP3 320 → MP3 128\n\
 💡 Tip: You don't need commands — just send a song name or link directly!";
 
 /// Label for a deemix bitrate value (9 = FLAC, 3/1 = MP3).
@@ -273,7 +275,7 @@ async fn handle_command(
             let kb = main_keyboard(&state.config);
             bot.send_message(
                 msg.chat.id,
-                "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name or a link from Deezer, Spotify, or Apple Music, and I'll find it and queue it for download on your server. No technical stuff needed!\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
+                "👋 Hey! I'm your personal music download assistant.\n\nJust send me a song name or a link from Deezer, Spotify, or Apple Music, and I'll find it and queue it for download on your Deemix server.\n\n📲 Use /menu to see quick action buttons.\n\nFor a full list of what I can do, type /help.",
             )
             .reply_markup(kb)
             .await?;
@@ -293,6 +295,10 @@ async fn handle_command(
 
         Command::Album => {
             prompt_album(&bot, &msg, &dialogue).await?;
+        }
+
+        Command::Recognize => {
+            prompt_recognize(&bot, &msg, &state, &dialogue).await?;
         }
 
         Command::Clearqueue => {
@@ -395,23 +401,7 @@ async fn handle_message(bot: Bot, msg: Message, state: Arc<BotState>, dialogue: 
             return Ok(());
         }
         BTN_RECOGNIZE_SONG => {
-            if !state.config.acrcloud_enabled() {
-                bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured.").await?;
-            } else {
-                dialogue.update(State::AwaitingVoiceRecognize).await.ok();
-                bot.send_message(msg.chat.id, "🎵 Send me an audio recording of a song and I'll identify it.\n\n⏱ You have 60 seconds.").await?;
-                // Spawn timeout to reset dialogue after 60s
-                let dialogue_clone = dialogue.clone();
-                let chat_id = msg.chat.id;
-                let bot_clone = bot.clone();
-                tokio::spawn(async move {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
-                    if let Ok(Some(State::AwaitingVoiceRecognize)) = dialogue_clone.get().await {
-                        dialogue_clone.exit().await.ok();
-                        let _ = bot_clone.send_message(chat_id, "⏱ Song recognition timed out. Send an audio recording or use /menu to start again.").await;
-                    }
-                });
-            }
+            prompt_recognize(&bot, &msg, &state, &dialogue).await?;
             return Ok(());
         }
         BTN_CHECK_STATUS => {
@@ -580,6 +570,29 @@ async fn prompt_search(bot: &Bot, msg: &Message, dialogue: &MyDialogue) -> Respo
 async fn prompt_album(bot: &Bot, msg: &Message, dialogue: &MyDialogue) -> ResponseResult<()> {
     dialogue.update(State::AwaitingAlbum).await.ok();
     bot.send_message(msg.chat.id, "💿 What album are you looking for?").await?;
+    Ok(())
+}
+
+/// Switch the dialogue to song-recognition mode (/recognize and the "Recognize song" button):
+/// warn when ACRCloud is not configured, otherwise arm the 60 s AwaitingVoiceRecognize timeout.
+async fn prompt_recognize(bot: &Bot, msg: &Message, state: &Arc<BotState>, dialogue: &MyDialogue) -> ResponseResult<()> {
+    if !state.config.acrcloud_enabled() {
+        bot.send_message(msg.chat.id, "⚠️ Song recognition is not configured.").await?;
+        return Ok(());
+    }
+    dialogue.update(State::AwaitingVoiceRecognize).await.ok();
+    bot.send_message(msg.chat.id, "🎵 Send me an audio recording of a song and I'll identify it.\n\n⏱ You have 60 seconds.").await?;
+    // Reset the dialogue after 60 s if no recording arrived
+    let dialogue_clone = dialogue.clone();
+    let chat_id = msg.chat.id;
+    let bot_clone = bot.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+        if let Ok(Some(State::AwaitingVoiceRecognize)) = dialogue_clone.get().await {
+            dialogue_clone.exit().await.ok();
+            let _ = bot_clone.send_message(chat_id, "⏱ Song recognition timed out. Send an audio recording or use /menu to start again.").await;
+        }
+    });
     Ok(())
 }
 

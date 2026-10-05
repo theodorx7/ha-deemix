@@ -152,6 +152,7 @@ pub(crate) enum Command {
     Status,
     Search,
     Album,
+    Recognize,
     Clearqueue,
     Menu,
     Settings,

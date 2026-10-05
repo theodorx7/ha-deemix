@@ -72,7 +72,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
-#      id-token: write   # вернуть при включении cosign
+      id-token: write
       packages: write
     strategy:
       fail-fast: false
@@ -85,7 +85,7 @@ jobs:
       - name: Build image
         uses: home-assistant/builder/actions/build-image@2026.06.0
         with:
-          cosign: "false"
+          cosign: "true"
           arch: ${{ matrix.arch }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           context: "./deemix"
@@ -106,13 +106,13 @@ jobs:
     needs: [init, build]
     runs-on: ubuntu-latest
     permissions:
-#      id-token: write   # вернуть при включении cosign
+      id-token: write
       packages: write
     steps:
       - name: Publish multi-arch manifest
         uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.06.0
         with:
-          cosign: "false"
+          cosign: "true"
           architectures: ${{ needs.init.outputs.architectures }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           image-name: ${{ needs.init.outputs.image_name }}

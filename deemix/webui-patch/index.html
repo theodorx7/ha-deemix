@@ -16,18 +16,25 @@
 		</style>
 		<script>
 			// --- LOCAL PATCH: namespaced theme localStorage key ---
-			// Original: localStorage.getItem("selectedTheme").
 			// Reason: under Home Assistant Ingress the UI shares localStorage with
 			// the HA frontend, which uses the same unnamespaced "selectedTheme" key
 			// for its own theme settings (stored as a JSON object). That foreign
 			// value was applied verbatim as data-theme, matching no theme CSS and
 			// leaving the page unstyled until a theme was picked manually.
+			// Original (upstream deemix-webui@4.7.0):
+			// if (localStorage.getItem("selectedTheme")) {
+			// 	document.documentElement.setAttribute(
+			// 		"data-theme",
+			// 		localStorage.getItem("selectedTheme")
+			// 	);
+			// }
 			if (localStorage.getItem("deemix-selectedTheme")) {
 				document.documentElement.setAttribute(
 					"data-theme",
 					localStorage.getItem("deemix-selectedTheme")
 				);
 			}
+			// --- END LOCAL PATCH ---
 		</script>
 		<script>
 			// --- LOCAL PATCH: runtime base path for Home Assistant Ingress ---

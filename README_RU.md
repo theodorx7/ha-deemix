@@ -64,3 +64,25 @@ https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repositor
 2. Нажмите на меню с тремя точками в правом верхнем углу <kbd>⋮</kbd> → <kbd>Репозитории</kbd> и добавьте URL-адрес этого репозитория: [https://github.com/theodorx7/ha-deemix](https://github.com/theodorx7/ha-deemix)
 3. Обновите страницу и найдите приложение «Navidrome Rating Sync».
 
+
+
+## Настройка распознавания треков — ACRCloud  
+Зарегистрируйте аккаунт в сервисе ACRCloud -> https://console.acrcloud.com  
+Откройте ACRCloud Console  -> Раздел "Audio & Video Recognition":  
+1. Справа в верхнем меню выберите один из 3 регионов Europe, US West или Asia Pacific 
+
+2. Слева в боковом меню нажмите на "Projects" -> Откройте раздел "Audio & Video Recognition" -> Кнопка "Create Project"  
+
+3. В форме создания проекта заполните поля:  
+	Project Name -> Telegram Bot  
+	Audio Source -> Recorded Audio (Audio captured via microphone or noisy audio files)  
+	Audio Engine -> Audio Fingerprinting  
+	Buckets -> ACRCloud Music  
+	The 3rd Party ID Integration -> "spotify" + "deezer" + "isrc"  
+
+⚠️ КРИТИЧНО: в опции «3rd Party ID Integration» нужно отметить галочкой 3 варианта: `deezer`, `spotify`, а также `isrc`.
+
+4. После создания проекта в консоле ACRCloud появятся данные "Host", "Access Key", "Access Secret", заполните ими соответсвующие поля в опциях аддона:  
+`ACRCloud Host`  
+`ACRCloud Access Key`  
+`ACRCloud Secret Key`  

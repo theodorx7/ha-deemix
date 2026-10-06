@@ -13,7 +13,7 @@ configuration:
   telegram_enabled:
     name: Включить Telegram-бота
     description: >-
-      Включить Telegram-бота для удаленного скачивания музыки. Требуется токен бота от @BotFather.
+      Telegram-бот для удаленного скачивания музыки. Требуется токен от @BotFather.
   telegram_token:
     name: Токен Telegram-бота
     description: >-

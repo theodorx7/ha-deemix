@@ -25,10 +25,10 @@ String.prototype.capitalize = function () {
 
 // --- LOCAL PATCH: removed hardcoded base path ---
 // Original: location.base = "/";
-// Reason: the base path is provided at runtime - injected by the server
-// (X-Ingress-Path header) or derived by the client from its own URL (see the
-// base path script in index.html). This line would overwrite that value back
-// to "/" when the bundle evaluates.
+// Reason: the base path is derived at runtime in index.html (see the base
+// path script there) and consumed by api-utils, the router and the
+// websocket. This line would overwrite that value back to "/" when the
+// bundle evaluates.
 // --- END LOCAL PATCH ---
 
 /* ===== App initialization ===== */

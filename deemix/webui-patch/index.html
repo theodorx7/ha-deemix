@@ -7,49 +7,45 @@
 			// Original: no such script.
 			// Reason: asset URLs are document-relative (vite base "./"), so the app
 			// must know its mount prefix (reverse proxy subfolder, HA ingress - the
-			// proxy strips the prefix and current Supervisor versions do not send
-			// X-Ingress-Path to the addon). When the server did not inject
-			// window.location.base (no X-Ingress-Path header), the prefix is derived
-			// here from the document URL by locating the first known client route
-			// segment - everything before it is the mount prefix. A <base> tag is
-			// written before any URL-bearing element so relative asset URLs resolve
-			// correctly at any route depth. Route list mirrors
+			// proxy strips the prefix). The prefix is derived from the document URL
+			// by locating the first known client route segment - everything before
+			// it is the mount prefix. A <base> tag is written before any
+			// URL-bearing element so relative asset URLs resolve correctly at any
+			// route depth. Route list mirrors
 			// src/client/router/index.ts (upstream deemix-webui@4.7.0).
-			if (!window.location.base) {
-				var known = [
-					"tracklist",
-					"artist",
-					"album",
-					"playlist",
-					"spotify-playlist",
-					"charts",
-					"favorites",
-					"errors",
-					"link-analyzer",
-					"about",
-					"info-arl",
-					"info-spotify",
-					"settings",
-					"search",
-				];
-				var segments = window.location.pathname.split("/");
-				var base = null;
-				for (var i = 1; i < segments.length; i++) {
-					if (known.indexOf(segments[i]) !== -1) {
-						base = segments.slice(0, i).join("/") + "/";
-						break;
-					}
+			var known = [
+				"tracklist",
+				"artist",
+				"album",
+				"playlist",
+				"spotify-playlist",
+				"charts",
+				"favorites",
+				"errors",
+				"link-analyzer",
+				"about",
+				"info-arl",
+				"info-spotify",
+				"settings",
+				"search",
+			];
+			var segments = window.location.pathname.split("/");
+			var base = null;
+			for (var i = 1; i < segments.length; i++) {
+				if (known.indexOf(segments[i]) !== -1) {
+					base = segments.slice(0, i).join("/") + "/";
+					break;
 				}
-				if (base === null) {
-					base =
-						window.location.pathname.slice(-1) === "/"
-							? window.location.pathname
-							: "/";
-				}
-				base = base.replace(/[^\/A-Za-z0-9._~!$&'()*+,;=:@%-]/g, "");
-				window.location.base = base;
-				document.write('<base href="' + base + '">');
 			}
+			if (base === null) {
+				base =
+					window.location.pathname.slice(-1) === "/"
+						? window.location.pathname
+						: "/";
+			}
+			base = base.replace(/[^\/A-Za-z0-9._~!$&'()*+,;=:@%-]/g, "");
+			window.location.base = base;
+			document.write('<base href="' + base + '">');
 			// --- END LOCAL PATCH ---
 		</script>
 		<title>Deemix</title>

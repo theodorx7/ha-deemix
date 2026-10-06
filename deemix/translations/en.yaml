@@ -5,23 +5,20 @@ configuration:
       name:
         name: Variable Name
         description: >-
-          Environment variable name (e.g. DEEMIX_MUSIC_DIR, PUID, PGID).
+          Environment variable name (e.g. PUID, PGID).
           Must contain only letters, numbers and underscores.
       value:
         name: Value
         description: >-
-          Environment variable value (e.g. /media/downloads/ for
-          DEEMIX_MUSIC_DIR, 1000 for PUID).
+          Environment variable value (e.g. 1000 for PUID/PGID).
   telegram_enabled:
     name: Enable Telegram Bot
     description: >-
-      Enable the Telegram bot for remote music downloads.
-      Requires a Telegram bot token from @BotFather.
+      Enable the Telegram bot for remote music downloads. Requires a Telegram bot token from @BotFather.
   telegram_token:
     name: Telegram Bot Token
     description: >-
-      Bot token obtained from @BotFather in Telegram.
-      Required if Telegram Bot is enabled.
+      Bot token obtained from @BotFather in Telegram. Required if Telegram Bot is enabled.
   whitelist_enabled:
     name: "Access Control"
     description: >-
@@ -29,30 +26,23 @@ configuration:
   whitelist_ids:
     name: "Allowed User Telegram IDs"
     description: >-
-      Comma-separated list of Telegram user IDs allowed to use the bot.
-      Get your ID via @userinfobot on Telegram.
-      Spaces around IDs are trimmed automatically. Invalid IDs are ignored.
+      Comma-separated list of Telegram user IDs allowed to use the bot. Get your ID via @userinfobot on Telegram.
       Example: 123456789,987654321
   deemix_bitrate_lock:
     name: Lock Quality
     description: >-
-      Prevent users from changing the download quality
-      via the Telegram bot /settings command.
+      Prevent users from changing the download quality via the Telegram bot.
   acrcloud_host:
     name: ACRCloud Host
     description: >-
-      Recognition host of your ACRCloud project (shown in the ACRCloud
-      console, e.g. identify-eu-west-1.acrcloud.com).
+      Recognition host of your ACRCloud project (shown in the ACRCloud console, e.g. identify-eu-west-1.acrcloud.com).
   acrcloud_access_key:
     name: ACRCloud Access Key
     description: >-
-      Access key of your ACRCloud Audio & Video Recognition project.
-      Required together with the Secret Key; enables the song
-      recognition feature.
+      Access key of your ACRCloud Audio & Video Recognition project. Required together with the Secret Key.
   acrcloud_secret_key:
     name: ACRCloud Secret Key
     description: >-
-      Secret key of your ACRCloud Audio & Video Recognition project.
-      Required together with the Access Key.
+      Secret key of your ACRCloud Audio & Video Recognition project. Required together with the Access Key.
 network:
   6595/tcp: "Deemix WebUI"

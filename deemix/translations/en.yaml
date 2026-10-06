@@ -17,7 +17,7 @@ configuration:
   telegram_token:
     name: Telegram Bot Token
     description: >-
-      Bot token obtained from @BotFather in Telegram. Required if Telegram Bot is enabled.
+      Bot token obtained from @BotFather in Telegram.
   whitelist_enabled:
     name: "Access Control"
     description: >-

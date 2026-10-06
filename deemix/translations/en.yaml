@@ -28,20 +28,16 @@ configuration:
       Comma-separated list of Telegram user IDs allowed to use the bot. Get your ID via @userinfobot on Telegram.
       Example: 123456789,987654321
   deemix_bitrate_lock:
-    name: Lock Quality
+    name: Lock Download Quality
     description: >-
-      Prevent users from changing the download quality via the Telegram bot.
+      Disables the option for Telegram bot users to change the default download quality.
   acrcloud_host:
     name: ACRCloud Host
     description: >-
-      Recognition host of your ACRCloud project (shown in the ACRCloud console, e.g. identify-eu-west-1.acrcloud.com).
+      Base URL for the ACRCloud API.
   acrcloud_access_key:
     name: ACRCloud Access Key
-    description: >-
-      Access key of your ACRCloud Audio & Video Recognition project.
   acrcloud_secret_key:
     name: ACRCloud Secret Key
-    description: >-
-      Secret key of your ACRCloud Audio & Video Recognition project.
 network:
   6595/tcp: "Deemix WebUI"

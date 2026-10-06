@@ -17,7 +17,7 @@ configuration:
   telegram_token:
     name: Токен Telegram-бота
     description: >-
-      Токен бота, полученный от @BotFather в Telegram. Обязателен, если Telegram-бот включен.
+      Токен бота, полученный от @BotFather в Telegram.
   whitelist_enabled:
     name: "Контроль доступа"
     description: >-

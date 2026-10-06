@@ -102,13 +102,16 @@ const wss = new WebSocketServer({ server });
 if (process.env.NODE_ENV === "production") {
 	const publicPath = join(dirname(fileURLToPath(import.meta.url)), "public");
 	// --- LOCAL PATCH: inject base path from X-Ingress-Path into index.html ---
-	// Reason: under Home Assistant Ingress the UI is served from
-	// /api/hassio_ingress/<token>/, so document-relative asset URLs and the
-	// location.base global (API calls, router, websocket) must carry that
-	// prefix. Injecting <base href> + window.location.base into index.html
-	// fixes asset resolution at ANY route depth (the SPA fallback otherwise
-	// serves index.html for asset requests on deep-link refresh). Without the
-	// header (direct access) the base is "/". Original (upstream
+	// Reason: under Home Assistant Ingress the UI is served from a prefixed
+	// path (/api/hassio_ingress/<token>/), so document-relative asset URLs and
+	// the location.base global (API calls, router, websocket) must carry that
+	// prefix. When the proxy provides the X-Ingress-Path header, inject
+	// <base href> + window.location.base into index.html - that fixes asset
+	// resolution at ANY route depth (the SPA fallback otherwise serves
+	// index.html for asset requests on deep-link refresh). NOTE: current
+	// Supervisor versions do not send this header; in that case index.html is
+	// served untouched and the client derives the base from its own URL (see
+	// the base path script in index.html). Original (upstream
 	// deemix-webui@4.7.0):
 	// 	app.use(express.static(publicPath));
 	// 	app.get("*", (_, res) => {
@@ -117,11 +120,14 @@ if (process.env.NODE_ENV === "production") {
 	app.use(express.static(publicPath, { index: false }));
 	app.get("*", (req, res) => {
 		const ingressPath = req.headers["x-ingress-path"];
-		const base =
-			typeof ingressPath === "string" &&
-			/^\/[\w.\-~!$&'()*+,;=:@%]*\/?$/.test(ingressPath)
-				? ingressPath.replace(/\/+$/, "") + "/"
-				: "/";
+		if (
+			typeof ingressPath !== "string" ||
+			!/^\/[\w.\-~!$&'()*+,;=:@%]*\/?$/.test(ingressPath)
+		) {
+			res.sendFile(join(publicPath, "index.html"));
+			return;
+		}
+		const base = ingressPath.replace(/\/+$/, "") + "/";
 		readFile(join(publicPath, "index.html"), "utf8", (err, html) => {
 			if (err) return res.status(500).send("Cannot load index.html");
 			res.type("html").send(

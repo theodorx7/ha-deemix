@@ -39,7 +39,7 @@
   - Spotify: трек / альбом / плейлист
   - Apple Music: трек / альбом  
 
-- Распознавание музыки через ACRCloud (аналог Shazam) – требуется API-ключ
+- Распознавание музыки через ACRCloud (аналог Shazam) – требуется [API-ключ](#acrcloud)
 
 - Поиск треков или альбомов по текстовому сообщению в чат  
 
@@ -90,6 +90,7 @@ env_vars:
 
 
 
+<a id="acrcloud"></a>
 ## Настройка распознавания треков — ACRCloud  
 Зарегистрируйте аккаунт ACRCloud -> https://console.acrcloud.com  
 Откройте ACRCloud Console  -> Раздел "Audio & Video Recognition":  

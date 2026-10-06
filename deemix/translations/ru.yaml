@@ -5,7 +5,7 @@ configuration:
       name:
         name: Имя переменной
         description: >-
-          Имя переменной окружения (например, BOT_BITRATE, PUID, PGID). Должно содержать только буквы, цифры и нижние подчеркивания.
+          Имя переменной окружения (например, BOT_BITRATE, PUID, PGID).
       value:
         name: Значение
         description: >-

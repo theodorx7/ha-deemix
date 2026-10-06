@@ -13,7 +13,7 @@ configuration:
   telegram_enabled:
     name: Enable Telegram Bot
     description: >-
-      Enable the Telegram bot for remote music downloads. Requires a Telegram bot token from @BotFather.
+      Telegram bot for remote music downloads. @BotFather token required.
   telegram_token:
     name: Telegram Bot Token
     description: >-

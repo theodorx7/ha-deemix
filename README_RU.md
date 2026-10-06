@@ -87,7 +87,7 @@ env_vars:
     value: "3"
 ```
 
-- Файлы конфигураций Deemix и Telegram-бота хранятся в addon_configs/`<slug вашего приложения>`_deemix/config.json  
+- Файлы конфигураций Deemix и Telegram-бота хранятся в "addon_configs/`<slug вашего приложения>`_deemix/"  
 
 
 

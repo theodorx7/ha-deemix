@@ -91,7 +91,7 @@ env_vars:
 
 
 ## Настройка распознавания треков — ACRCloud  
-Зарегистрируйте аккаунт в сервисе ACRCloud -> https://console.acrcloud.com  
+Зарегистрируйте аккаунт ACRCloud -> https://console.acrcloud.com  
 Откройте ACRCloud Console  -> Раздел "Audio & Video Recognition":  
 1. Справа в верхнем меню выберите один из 3 регионов Europe, US West или Asia Pacific 
 

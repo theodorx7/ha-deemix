@@ -38,10 +38,10 @@ configuration:
   acrcloud_access_key:
     name: ACRCloud Access Key
     description: >-
-      Access key of your ACRCloud Audio & Video Recognition project. Required together with the Secret Key.
+      Access key of your ACRCloud Audio & Video Recognition project.
   acrcloud_secret_key:
     name: ACRCloud Secret Key
     description: >-
-      Secret key of your ACRCloud Audio & Video Recognition project. Required together with the Access Key.
+      Secret key of your ACRCloud Audio & Video Recognition project.
 network:
   6595/tcp: "Deemix WebUI"

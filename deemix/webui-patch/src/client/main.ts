@@ -25,9 +25,10 @@ String.prototype.capitalize = function () {
 
 // --- LOCAL PATCH: removed hardcoded base path ---
 // Original: location.base = "/";
-// Reason: the base path is computed at runtime in index.html
-// (Home Assistant Ingress: /api/hassio_ingress/<token>/). This line would
-// overwrite the computed value back to "/" when the bundle evaluates.
+// Reason: the base path is injected by the server into index.html
+// (window.location.base from the X-Ingress-Path header, "/" on direct
+// access). This line would overwrite the injected value back to "/" when
+// the bundle evaluates.
 // --- END LOCAL PATCH ---
 
 /* ===== App initialization ===== */

@@ -23,9 +23,9 @@ configuration:
     description: >-
       Restrict bot access to only whitelisted user IDs.
   whitelist_ids:
-    name: "Allowed User Telegram IDs"
+    name: "Allowed Telegram User IDs"
     description: >-
-      Comma-separated list of Telegram user IDs allowed to use the bot. Get your ID via @userinfobot on Telegram.
+      Comma-separated list of Telegram IDs allowed to use this bot. Find your ID via @userinfobot.
       Example: 123456789,987654321
   deemix_bitrate_lock:
     name: Lock Download Quality

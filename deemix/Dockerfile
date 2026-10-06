@@ -43,7 +43,7 @@ COPY webui-patch/src/server/main.ts /app/packages/webui/src/server/main.ts
 RUN cd /app/packages/webui && \
     node /app/node_modules/vite/bin/vite.js build && \
     node /app/node_modules/.bin/tsc --build src/server/tsconfig.json && \
-    node ./node_modules/.bin/tsc-alias -p src/server/tsconfig.json && \
+    node /app/node_modules/.bin/tsc-alias -p src/server/tsconfig.json && \
     find /app/packages -type f \
         \( -name "*.d.ts" \
         -o -name "*.d.ts.map" \

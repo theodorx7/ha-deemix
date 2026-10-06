@@ -5,8 +5,7 @@ configuration:
       name:
         name: Variable Name
         description: >-
-          Environment variable name (e.g. PUID, PGID).
-          Must contain only letters, numbers and underscores.
+          Environment variable name (e.g. PUID, PGID). Must contain only letters, numbers and underscores.
       value:
         name: Value
         description: >-

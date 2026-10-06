@@ -1,0 +1,47 @@
+configuration:
+  env_vars:
+    name: Переменные окружения
+    fields:
+      name:
+        name: Имя переменной
+        description: >-
+          Имя переменной окружения (например, PUID, PGID). Должно содержать только буквы, цифры и нижние подчеркивания.
+      value:
+        name: Значение
+        description: >-
+          Значение переменной окружения (например, 1000 для PUID/PGID).
+  telegram_enabled:
+    name: Включить Telegram-бота
+    description: >-
+      Включить Telegram-бота для удаленного скачивания музыки. Требуется токен бота от @BotFather.
+  telegram_token:
+    name: Токен Telegram-бота
+    description: >-
+      Токен бота, полученный от @BotFather в Telegram. Обязателен, если Telegram-бот включен.
+  whitelist_enabled:
+    name: "Контроль доступа"
+    description: >-
+      Ограничить доступ к боту только для ID пользователей из белого списка.
+  whitelist_ids:
+    name: "Разрешенные Telegram ID пользователей"
+    description: >-
+      Разделенный запятыми список Telegram ID пользователей, которым разрешено использовать бота. Узнать свой ID можно через @userinfobot в Telegram.
+      Пример: 123456789,987654321
+  deemix_bitrate_lock:
+    name: Заблокировать качество
+    description: >-
+      Запретить пользователям изменять качество скачивания через Telegram-бота.
+  acrcloud_host:
+    name: Хост ACRCloud
+    description: >-
+      Хост распознавания вашего проекта ACRCloud (указан в консоли ACRCloud, например, identify-eu-west-1.acrcloud.com).
+  acrcloud_access_key:
+    name: Ключ доступа ACRCloud
+    description: >-
+      Ключ доступа вашего проекта ACRCloud Audio & Video Recognition. Обязателен для использования вместе с секретным ключом (Secret Key).
+  acrcloud_secret_key:
+    name: Секретный ключ ACRCloud
+    description: >-
+      Секретный ключ вашего проекта ACRCloud Audio & Video Recognition. Обязателен для использования вместе с ключом доступа (Access Key).
+network:
+  6595/tcp: "Веб-интерфейс Deemix"

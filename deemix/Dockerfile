@@ -90,7 +90,6 @@ COPY --from=deemix-builder /custom-services.d /custom-services.d
 
 ENV NODE_ENV=production
 ENV DEEMIX_DATA_DIR=/config/
-ENV DEEMIX_MUSIC_DIR=/downloads/
 ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
 
 COPY rootfs/ /

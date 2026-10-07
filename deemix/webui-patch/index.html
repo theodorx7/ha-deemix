@@ -41,7 +41,7 @@
 				base =
 					window.location.pathname.slice(-1) === "/"
 						? window.location.pathname
-						: "/";
+						: window.location.pathname + "/";
 			}
 			base = base.replace(/[^\/A-Za-z0-9._~!$&'()*+,;=:@%-]/g, "");
 			window.location.base = base;

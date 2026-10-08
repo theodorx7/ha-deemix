@@ -31,7 +31,7 @@ This project provides the full functionality of the original (unmodified) [Deemi
   - Spotify: track / album / playlist
   - Apple Music: track / album  
 
-- Music recognition via ACRCloud (a Shazam alternative) – requires an [API key](#acrcloud)
+- Music recognition via ACRCloud (a Shazam alternative) – requires an [API key](https://github.com/theodorx7/ha-deemix#acrcloud)
 
 - Search for tracks or albums by sending a text message in the chat  
 

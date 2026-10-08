@@ -52,17 +52,18 @@ This project provides the full functionality of the original (unmodified) [Deemi
 
 <br/>
 
-<a id="donate"></a>
-## ❤️ Support the project
+### ❤️ Support the project
 [![DONAT.stream](https://img.shields.io/badge/DONAT.stream-fc0?style=for-the-badge&logo=heart&logoColor=white)](https://donate.stream/donate_6a8404d5ea133)  
 
 ![USDT](https://img.shields.io/badge/USDT-26A17B?style=for-the-badge&logo=tether&logoColor=white)  
-TRC-20: <kbd>TQrwpY2LWF96YBbBSZZawRqQ6j9K4PzPQo</kbd>   
-BEP-20: <kbd>0x2a1581bcbd2dc64b9d0f494c636d1d5dacb898e6</kbd>  
-POLYGON: <kbd>0x8051a1cf7a3b41221d723f7eae77d59d14fb275b</kbd>  
-TON: <kbd>EQBetln-nWakoK3LaTOn8l8oqnhNZgbVMHq_neSPPA6tS6nS</kbd>  
+TRC-20  
+<kbd>TQrwpY2LWF96YBbBSZZawRqQ6j9K4PzPQo</kbd>    
 
-<br/>
-<a href="https://github.com/theodorx7/ha-deemix/">
-  <img align="right" alt="Hits" src="https://hits.sh/github.com/theodorx7/ha-deemix.svg?style=for-the-badge&color=555555">
-</a>
+BEP-20  
+<kbd>0x2a1581bcbd2dc64b9d0f494c636d1d5dacb898e6</kbd>    
+
+POLYGON  
+<kbd>0x8051a1cf7a3b41221d723f7eae77d59d14fb275b</kbd>    
+
+TON  
+<kbd>EQBetln-nWakoK3LaTOn8l8oqnhNZgbVMHq_neSPPA6tS6nS</kbd>    

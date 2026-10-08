@@ -30,7 +30,7 @@ RUN set -eux; \
 # Stage 2: Deemix Client Rebuild
 # ================================================================
 
-FROM ghcr.io/bambanah/deemix:v4.7.0 AS deemix-builder
+FROM ghcr.io/bambanah/deemix:v4.7.1 AS deemix-builder
 
 COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
 COPY webui-patch/index.html /app/packages/webui/index.html

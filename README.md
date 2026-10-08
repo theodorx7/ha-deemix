@@ -109,11 +109,11 @@ Open the ACRCloud Console -> "Audio & Video Recognition" section:
 2. In the left sidebar, click "Projects" -> Open the "Audio & Video Recognition" section -> Click "Create Project"
 
 3. Fill in the project creation form:  
-	Project Name -> Telegram Bot  
-	Audio Source -> Recorded Audio (Audio captured via microphone or noisy audio files)  
-	Audio Engine -> Audio Fingerprinting  
-	Buckets -> ACRCloud Music  
-	The 3rd Party ID Integration -> `spotify` + `deezer` + `isrc`   
+    - Project Name -> Telegram Bot  
+    - Audio Source -> Recorded Audio (Audio captured via microphone or noisy audio files)  
+    - Audio Engine -> Audio Fingerprinting  
+    - Buckets -> ACRCloud Music  
+    - The 3rd Party ID Integration -> `spotify` + `deezer` + `isrc`   
 
 ⚠️ IMPORTANT: In the «3rd Party ID Integration» option, make sure to check all 3 boxes: `deezer`, `spotify` and `isrc`.  
 

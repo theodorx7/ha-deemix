@@ -3,32 +3,10 @@
 	<head>
 		<meta charset="utf-8" />
 		<script>
-			// --- LOCAL PATCH: derive base path at runtime ---
-			// Original: no such script.
-			// Reason: asset URLs are document-relative (vite base "./"), so the app
-			// must know its mount prefix (reverse proxy subfolder, HA ingress - the
-			// proxy strips the prefix). The prefix is derived from the document URL
-			// by locating the first known client route segment - everything before
-			// it is the mount prefix. A <base> tag is written before any
-			// URL-bearing element so relative asset URLs resolve correctly at any
-			// route depth. Route list mirrors
-			// src/client/router/index.ts (upstream deemix-webui@4.7.0).
-			var known = [
-				"tracklist",
-				"artist",
-				"album",
-				"playlist",
-				"spotify-playlist",
-				"charts",
-				"favorites",
-				"errors",
-				"link-analyzer",
-				"about",
-				"info-arl",
-				"info-spotify",
-				"settings",
-				"search",
-			];
+			// Derives mount prefix (e.g. reverse proxy subfolder) from URL before first
+			// known route segment. Used as <base> and location.base. Segments are auto-injected
+			// by route-segments plugin in vite.config.mts.
+			var known = [];
 			var segments = window.location.pathname.split("/");
 			var base = null;
 			for (var i = 1; i < segments.length; i++) {
@@ -46,7 +24,6 @@
 			base = base.replace(/[^\/A-Za-z0-9._~!$&'()*+,;=:@%-]/g, "");
 			window.location.base = base;
 			document.write('<base href="' + base + '">');
-			// --- END LOCAL PATCH ---
 		</script>
 		<title>Deemix</title>
 		<link rel="shortcut icon" type="image/png" href="favicon.png" />
@@ -61,26 +38,12 @@
 			}
 		</style>
 		<script>
-			// --- LOCAL PATCH: namespaced theme localStorage key ---
-			// Reason: under Home Assistant Ingress the UI shares localStorage with
-			// the HA frontend, which uses the same unnamespaced "selectedTheme" key
-			// for its own theme settings (stored as a JSON object). That foreign
-			// value was applied verbatim as data-theme, matching no theme CSS and
-			// leaving the page unstyled until a theme was picked manually.
-			// Original (upstream deemix-webui@4.7.0):
-			// if (localStorage.getItem("selectedTheme")) {
-			// 	document.documentElement.setAttribute(
-			// 		"data-theme",
-			// 		localStorage.getItem("selectedTheme")
-			// 	);
-			// }
 			if (localStorage.getItem("deemix-selectedTheme")) {
 				document.documentElement.setAttribute(
 					"data-theme",
 					localStorage.getItem("deemix-selectedTheme")
 				);
 			}
-			// --- END LOCAL PATCH ---
 		</script>
 	</head>
 

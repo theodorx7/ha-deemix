@@ -17,10 +17,6 @@
 
 [English](https://github.com/theodorx7/ha-deemix/blob/main/README.md) | [Russian](https://github.com/theodorx7/ha-deemix/blob/main/README_RU.md)
 
-> ⚠️ **WIP: IN DEVELOPMENT**
-> Subscribe to updates (**Watch -> Releases**) and wait for the first release.
-
--------------------------
 This project provides the full functionality of the original (unmodified) [Deemix](https://github.com/bambanah/deemix) as a Home Assistant add-on and extends its capabilities using a Telegram bot.
 
 

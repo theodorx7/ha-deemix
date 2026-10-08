@@ -39,8 +39,8 @@ env_vars:
 
 <a id="acrcloud"></a>
 ## Setting Up Track Recognition — ACRCloud
-Sign up for an ACRCloud account -> https://console.acrcloud.com
-Open the ACRCloud Console -> "Audio & Video Recognition" section:
+Sign up for an ACRCloud account -> https://console.acrcloud.com  
+Open the ACRCloud Console -> "Audio & Video Recognition" section:  
 
 1. In the top-right menu, select one of the 3 regions: Europe, US West, or Asia Pacific
 

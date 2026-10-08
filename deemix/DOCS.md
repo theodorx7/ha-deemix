@@ -9,7 +9,9 @@
 
 
 ## Opening the Web Interface
-- Within Home Assistant: on the add-on page, click the "Open Web UI" button. For quick access, enable the "Show in sidebar" option.
+- Within Home Assistant: on the add-on page, click the "Open Web UI" button.  
+  For quick access, enable the `"Show in sidebar"` option.
+
 - Via a direct IP address on the local network, without authenticating or logging into Home Assistant:  
   http://`<your Home Assistant IP address>`:6595 (for example: `http://192.168.1.30:6595`).  
   Only the HTTP protocol is supported. The default port is 6595 — this can be changed in the add-on settings.

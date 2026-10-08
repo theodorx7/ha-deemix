@@ -103,15 +103,16 @@ env_vars:
 2. Слева в боковом меню нажмите на "Projects" -> Откройте раздел "Audio & Video Recognition" -> Кнопка "Create Project"  
 
 3. В форме создания проекта заполните поля:  
-	Project Name -> Telegram Bot  
-	Audio Source -> Recorded Audio (Audio captured via microphone or noisy audio files)  
-	Audio Engine -> Audio Fingerprinting  
-	Buckets -> ACRCloud Music  
-	The 3rd Party ID Integration -> `spotify` + `deezer` + `isrc`   
+  - Project Name -> Telegram Bot  
+  - Audio Source -> Recorded Audio (Audio captured via microphone or noisy audio files)  
+  - Audio Engine -> Audio Fingerprinting  
+  - Buckets -> ACRCloud Music  
+  - The 3rd Party ID Integration -> `spotify` + `deezer` + `isrc`   
 
 ⚠️ ВАЖНО: в опции «3rd Party ID Integration» нужно обязательно отметить галочкой 3 варианта: `deezer`, `spotify`, а также `isrc`.
 
-4. После создания проекта в консоли ACRCloud появятся данные "Host", "Access Key", "Access Secret", заполните ими соответствующие поля в настройках аддона:  
+4. После создания проекта в консоли ACRCloud появятся данные "Host", "Access Key", "Access Secret".
+   Заполните соответствующие поля в настройках аддона:  
 `ACRCloud Host`  
 `ACRCloud Access Key`  
 `ACRCloud Secret Key`  

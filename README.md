@@ -117,7 +117,7 @@ Open the ACRCloud Console -> "Audio & Video Recognition" section:
 
 ⚠️ IMPORTANT: In the «3rd Party ID Integration» option, make sure to check all 3 boxes: `deezer`, `spotify` and `isrc`.  
 
-4. Once the project is created, the ACRCloud console will display your "Host»", "Access Key", "Access Secret".  
+4. Once the project is created, the ACRCloud console will display your "Host", "Access Key", "Access Secret".  
    Enter these into the corresponding fields in the add-on settings:  
 `ACRCloud Host`  
 `ACRCloud Access Key`  

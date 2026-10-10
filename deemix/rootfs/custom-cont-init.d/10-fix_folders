@@ -3,6 +3,14 @@
 
 printf '[cont-init.d] Creating folders if missing\n'
 
+# --- LOCAL PATCH: resolve DEEMIX_MUSIC_DIR (config.json on restarts, HA env on first run) ---
+if [ -f /config/config.json ]; then
+    DEEMIX_MUSIC_DIR=$(jq -r '.downloadLocation // empty' /config/config.json)
+else
+    DEEMIX_MUSIC_DIR=$(cat /run/s6/container_environment/DEEMIX_MUSIC_DIR 2>/dev/null)
+fi
+# --- END LOCAL PATCH ---
+
 mkdir -p "$DEEMIX_MUSIC_DIR"
 mkdir -p "$DEEMIX_DATA_DIR"
 

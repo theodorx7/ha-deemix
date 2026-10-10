@@ -2,6 +2,12 @@
 # shellcheck disable=SC1008
 printf '[cont-init.d] Testing Access\n'
 
+printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: DEEMIX_MUSIC_DIR" ":" "'${DEEMIX_MUSIC_DIR:-<UNSET>}'"
+printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: Current user" ":" "$(id)"
+printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: /run/s6/container_environment/" ":" "$(ls -la /run/s6/container_environment/ 2>&1 | head -30)"
+printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: Target dir contents" ":" "$(ls -la "${DEEMIX_MUSIC_DIR:-/NONEXISTENT}" 2>&1 | head -10)"
+printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: [ -w ] test" ":" "$([ -w "${DEEMIX_MUSIC_DIR}" ] && echo 'TRUE' || echo 'FALSE')"
+
 # --- LOCAL PATCH: use $DEEMIX_MUSIC_DIR instead of hardcoded /downloads ---
 if [ -w "$DEEMIX_MUSIC_DIR" ]; then
 # --- END LOCAL PATCH ---

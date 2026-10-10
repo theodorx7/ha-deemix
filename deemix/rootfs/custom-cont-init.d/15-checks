@@ -2,14 +2,14 @@
 # shellcheck disable=SC1008
 printf '[cont-init.d] Testing Access\n'
 
-printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: DEEMIX_MUSIC_DIR" ":" "'${DEEMIX_MUSIC_DIR:-<UNSET>}'"
-printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: Current user" ":" "$(id)"
-printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: /run/s6/container_environment/" ":" "$(ls -la /run/s6/container_environment/ 2>&1 | head -30)"
-printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: Target dir contents" ":" "$(ls -la "${DEEMIX_MUSIC_DIR:-/NONEXISTENT}" 2>&1 | head -10)"
-printf '%-50s %2s %-5s \n' "[cont-init.d] DEBUG: [ -w ] test" ":" "$([ -w "${DEEMIX_MUSIC_DIR}" ] && echo 'TRUE' || echo 'FALSE')"
-
-# --- LOCAL PATCH: use $DEEMIX_MUSIC_DIR instead of hardcoded /downloads ---
-if [ -w "$DEEMIX_MUSIC_DIR" ]; then
+# --- LOCAL PATCH: determine actual download dir
+# (config.json downloadLocation on restarts, HA options env on first run) ---
+if [ -f /config/config.json ]; then
+    MUSIC_DIR=$(jq -r '.downloadLocation // empty' /config/config.json)
+else
+    MUSIC_DIR=$(cat /run/s6/container_environment/DEEMIX_MUSIC_DIR 2>/dev/null)
+fi
+if [ -w "$MUSIC_DIR" ]; then
 # --- END LOCAL PATCH ---
 
     printf '%-50s %2s %-5s \n' "[cont-init.d] Download Folder Write Access" ":" "Success"

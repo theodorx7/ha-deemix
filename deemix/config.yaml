@@ -1,0 +1,50 @@
+name: "Deemix with telegram bot"
+slug: "deemix"
+version: "4.7.2-bot1"
+description: "FLAC/MP3 music downloader with a Telegram bot: remote, chat-based control for automated downloads and built-in audio recognition."
+url: "https://github.com/theodorx7/ha-deemix/"
+image: "ghcr.io/theodorx7/ha-deemix"
+backup_exclude:
+  - "**/logs/**"
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: application
+boot: auto
+map:
+  - addon_config:rw
+  - media:rw
+  - share:rw
+ports:
+  6595/tcp: 6595
+ingress: true
+ingress_port: 6595
+panel_title: Deemix
+panel_icon: "mdi:music-circle"
+panel_admin: false
+
+options:
+  env_vars:
+    - name: "DEEMIX_MUSIC_DIR"
+      value: "/media/deemix"
+  telegram_enabled: false
+  telegram_token: ""
+  whitelist_enabled: true
+  whitelist_ids: ""
+  deemix_bitrate_lock: false
+  acrcloud_host: ""
+  acrcloud_access_key: ""
+  acrcloud_secret_key: ""
+schema:
+  env_vars:
+    - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
+      value: "str"
+  telegram_enabled: bool
+  telegram_token: "str?"
+  whitelist_enabled: bool
+  whitelist_ids: "str?"
+  deemix_bitrate_lock: bool
+  acrcloud_host: "str?"
+  acrcloud_access_key: "str?"
+  acrcloud_secret_key: "str?"

@@ -1,0 +1,43 @@
+configuration:
+  env_vars:
+    name: Environment Variables
+    fields:
+      name:
+        name: Variable Name
+        description: >-
+          Environment variable name (e.g. BOT_BITRATE, PUID, PGID).
+      value:
+        name: Value
+        description: >-
+          Environment variable value.
+  telegram_enabled:
+    name: Enable Telegram Bot
+    description: >-
+      Telegram bot for remote music downloads. @BotFather token required.
+  telegram_token:
+    name: Telegram Bot Token
+    description: >-
+      Bot token obtained from @BotFather in Telegram.
+  whitelist_enabled:
+    name: "Access Control"
+    description: >-
+      Restrict bot access to only whitelisted user IDs.
+  whitelist_ids:
+    name: "Allowed Telegram User IDs"
+    description: >-
+      Comma-separated list of Telegram IDs allowed to use this bot. Find your ID via @userinfobot.
+      Example: 123456789,987654321
+  deemix_bitrate_lock:
+    name: Lock Download Quality
+    description: >-
+      Disables the option for Telegram bot users to change the default download quality.
+  acrcloud_host:
+    name: ACRCloud Host
+    description: >-
+      Base URL for the ACRCloud API.
+  acrcloud_access_key:
+    name: ACRCloud Access Key
+  acrcloud_secret_key:
+    name: ACRCloud Secret Key
+network:
+  6595/tcp: "Deemix WebUI"

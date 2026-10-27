@@ -1,0 +1,63 @@
+#!/usr/bin/with-contenv bash
+set -e
+
+echo "[info] Applying Home Assistant options"
+
+# Publish an environment variable to all S6 services (read via with-contenv)
+set_env() {
+    printf '%s' "${2}" > "/run/s6/container_environment/${1}"
+    export "${1}=${2}"
+}
+
+# Custom environment variables from the add-on options (env_vars)
+while IFS= read -r -d '' key && IFS= read -r value; do
+    set_env "${key}" "${value}"
+    echo "[info] env: ${key}=<redacted>"
+done < <(jq -r '.env_vars[]? | "\(.name)\u0000\(.value // "")"' /data/options.json)
+
+# --- Apply PUID/PGID to user abc (default 1000:1000) ---
+if [ -n "${PUID}" ] && [ -n "${PGID}" ]; then
+    echo "[info] PUID=${PUID}, PGID=${PGID} from env_vars"
+else
+    echo "[info] PUID/PGID not set or incomplete — using default 1000:1000"
+    set_env "PUID" "1000"
+    set_env "PGID" "1000"
+fi
+if ! id abc &>/dev/null; then
+    echo "[error] User 'abc' not found. Base image may be corrupted."
+    exit 1
+fi
+usermod -o -u "${PUID}" abc 2>/dev/null || true
+groupmod -o -g "${PGID}" abc 2>/dev/null || true
+if [ "${PUID}" != "0" ]; then
+    chown -R abc:abc /config 2>/dev/null || echo "[warn] chown /config failed, continuing"
+fi
+echo "[info] PUID/PGID applied successfully"
+
+# --- Telegram bot options ---
+TELEGRAM_ENABLED=$(jq -r '.telegram_enabled // "false"' /data/options.json 2>/dev/null || echo "false")
+if [ "${TELEGRAM_ENABLED}" = "true" ]; then
+    set_env "TELEGRAM_ENABLED" "${TELEGRAM_ENABLED}"
+
+    set_env "TELEGRAM_TOKEN" "$(jq -r '.telegram_token // ""' /data/options.json)"
+    set_env "DEEMIX_BITRATE_LOCK" "$(jq -r '.deemix_bitrate_lock // false' /data/options.json)"
+    set_env "WHITELIST_ENABLED" "$(jq -r '.whitelist_enabled // false' /data/options.json)"
+    set_env "WHITELIST_IDS" "$(jq -r '.whitelist_ids // ""' /data/options.json)"
+    set_env "ACRCLOUD_HOST" "$(jq -r '.acrcloud_host // ""' /data/options.json)"
+    set_env "ACRCLOUD_ACCESS_KEY" "$(jq -r '.acrcloud_access_key // ""' /data/options.json)"
+    set_env "ACRCLOUD_SECRET_KEY" "$(jq -r '.acrcloud_secret_key // ""' /data/options.json)"
+
+    # Internal settings for running in the same container as Deemix
+    set_env "DEEMIX_SINGLE_USER" "true"
+    set_env "RUST_LOG" "info"
+
+    echo "[info] Telegram bot enabled"
+else
+    echo "[info] Telegram bot disabled"
+fi
+
+# --- Deemix server settings ---
+set_env "DEEMIX_SERVER_PORT" "6595"
+set_env "DEEMIX_URL" "http://localhost:6595"
+
+echo "[info] Home Assistant options applied"

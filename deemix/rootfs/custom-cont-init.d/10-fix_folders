@@ -1,0 +1,44 @@
+#!/usr/bin/with-contenv bash
+# shellcheck disable=SC1008
+
+printf '[cont-init.d] Creating folders if missing\n'
+
+# --- LOCAL PATCH: resolve DEEMIX_MUSIC_DIR (config.json on restarts, HA env on first run) ---
+if [ -f /config/config.json ]; then
+    DEEMIX_MUSIC_DIR=$(jq -r '.downloadLocation // empty' /config/config.json)
+else
+    DEEMIX_MUSIC_DIR=$(cat /run/s6/container_environment/DEEMIX_MUSIC_DIR 2>/dev/null)
+fi
+# --- END LOCAL PATCH ---
+
+mkdir -p "$DEEMIX_MUSIC_DIR"
+mkdir -p "$DEEMIX_DATA_DIR"
+
+printf '[cont-init.d] Fixing folder permissions\n'
+
+if [ -n "${DISABLE_OWNERSHIP_CHECK}" ] || [ -n "${DISABLE_OWNERSHIP_CHECK_MUSIC}" ] || { [ "${PUID}" = "0" ] && [ "${PGID}" = "0" ]; }; then
+    printf '[cont-init.d] Music folder ownership check disabled (env var or PUID=0)\n'
+else
+    printf '[cont-init.d] Fixing music folder permissions\n'
+    chown -R abc:abc "$DEEMIX_MUSIC_DIR" 2>/dev/null || printf '[cont-init.d] WARNING: chown music dir failed (NTFS/SMB?)\n'
+fi
+
+if [ -n "${DISABLE_OWNERSHIP_CHECK}" ] || [ -n "${DISABLE_OWNERSHIP_CHECK_DATA}" ] || { [ "${PUID}" = "0" ] && [ "${PGID}" = "0" ]; }; then
+    printf '[cont-init.d] Data folder ownership check disabled (env var or PUID=0)\n'
+else
+    printf '[cont-init.d] Fixing data folder permissions\n'
+    chown -R abc:abc "$DEEMIX_DATA_DIR" 2>/dev/null || printf '[cont-init.d] WARNING: chown data dir failed\n'
+fi
+
+if [ -f "/config/config.json" ]; then
+
+    # --- LOCAL PATCH: disabled jq rewrite of downloadLocation ---
+    # Reason: jq was resetting the user-configured downloadLocation in config.json
+    # to /downloads on every container restart, ignoring the folder set in the add-on UI settings.
+    # Original:
+    # Fix misconfigured download locations. The container's download map is always /downloads.
+    #	jq '.downloadLocation = "/downloads"' /config/config.json >tmp.$$.json && mv tmp.$$.json /config/config.json
+    # --- END LOCAL PATCH ---
+
+    chown abc:abc /config/config.json 2>/dev/null || true
+fi

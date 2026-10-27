@@ -1,0 +1,43 @@
+configuration:
+  env_vars:
+    name: Переменные окружения
+    fields:
+      name:
+        name: Имя переменной
+        description: >-
+          Имя переменной окружения (например, BOT_BITRATE, PUID, PGID).
+      value:
+        name: Значение
+        description: >-
+          Значение переменной окружения.
+  telegram_enabled:
+    name: Включить Telegram-бота
+    description: >-
+      Telegram-бот для удаленного скачивания музыки. Требуется токен от @BotFather.
+  telegram_token:
+    name: Токен Telegram-бота
+    description: >-
+      Токен бота, полученный от @BotFather в Telegram.
+  whitelist_enabled:
+    name: "Контроль доступа"
+    description: >-
+      Ограничить доступ к боту только для ID пользователей из белого списка.
+  whitelist_ids:
+    name: "Разрешенные Telegram ID пользователей"
+    description: >-
+      Разделенный запятыми список Telegram ID пользователей, которым разрешено использовать бота. Узнать свой ID можно через @userinfobot в Telegram.
+      Пример заполнения: 123456789,987654321
+  deemix_bitrate_lock:
+    name: Фиксированное качество загрузок
+    description: >-
+      Отключает возможность изменения качества загрузок по умолчанию для пользователей Telegram-бота.
+  acrcloud_host:
+    name: ACRCloud Host
+    description: >-
+      Хост для взаимодействия с API ACRCloud.
+  acrcloud_access_key:
+    name: ACRCloud Access Key
+  acrcloud_secret_key:
+    name: ACRCloud Secret Key
+network:
+  6595/tcp: "Веб-интерфейс Deemix"

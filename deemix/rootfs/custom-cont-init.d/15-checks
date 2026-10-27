@@ -1,0 +1,28 @@
+#!/usr/bin/with-contenv bash
+# shellcheck disable=SC1008
+printf '[cont-init.d] Testing Access\n'
+
+# --- LOCAL PATCH: determine actual download dir
+# (config.json downloadLocation on restarts, HA options env on first run) ---
+if [ -f /config/config.json ]; then
+    MUSIC_DIR=$(jq -r '.downloadLocation // empty' /config/config.json)
+else
+    MUSIC_DIR=$(cat /run/s6/container_environment/DEEMIX_MUSIC_DIR 2>/dev/null)
+fi
+if [ -w "$MUSIC_DIR" ]; then
+# --- END LOCAL PATCH ---
+
+    printf '%-50s %2s %-5s \n' "[cont-init.d] Download Folder Write Access" ":" "Success"
+else
+    printf '%-50s %2s %-5s \n' "[cont-init.d] Download Folder Write Access" ":" "Failure"
+fi
+if [ -w "/config" ]; then
+    printf '%-50s %2s %-5s \n' "[cont-init.d] Config Folder Write Access" ":" "Success"
+else
+    printf '%-50s %2s %-5s \n' "[cont-init.d] Config Folder Write Access" ":" "Failure"
+fi
+until curl --fail -sf www.deezer.com; do
+    printf '%-50s %2s %-5s \n' "[cont-init.d] Internet Access" ":" "Failure. Trying again in 5 seconds"
+    sleep 5
+done
+printf '%-50s %2s %-5s \n' "[cont-init.d] Internet Access" ":" "Success"

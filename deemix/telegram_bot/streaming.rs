@@ -1,0 +1,155 @@
+//! Streaming-link handling: Spotify and Apple Music links.
+//!
+//! Converts a streaming URL to Deezer: tracks and albums via metadata search,
+//! playlists are scanned per-track.
+
+use std::sync::{Arc, LazyLock};
+
+use regex::Regex;
+
+use teloxide::prelude::*;
+
+use crate::{BotState, apple, deemix, search_and_show, spotify};
+
+// ── URL Patterns ──────────────────────────────────────────────────────────────
+pub(crate) static SPOTIFY_TRACK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"(?i)https?://open\.spotify\.com/(?:intl-[a-z-]+/)?track/([A-Za-z0-9]+)"
+).unwrap());
+pub(crate) static SPOTIFY_ALBUM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"(?i)https?://open\.spotify\.com/(?:intl-[a-z-]+/)?album/([A-Za-z0-9]+)"
+).unwrap());
+pub(crate) static SPOTIFY_PLAYLIST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(
+    r"(?i)https?://open\.spotify\.com/(?:intl-[a-z-]+/)?playlist/[A-Za-z0-9]+"
+).unwrap());
+
+pub(crate) async fn handle_streaming_link(bot: &Bot, msg: &Message, state: &Arc<BotState>, url: &str) -> ResponseResult<()> {
+    let sent = bot.send_message(msg.chat.id, "🎵 Looking up link...").await?;
+
+    // Spotify track or album: resolve metadata then show Deezer search results
+    if SPOTIFY_TRACK_RE.is_match(url) || SPOTIFY_ALBUM_RE.is_match(url) {
+        let search_type = if SPOTIFY_TRACK_RE.is_match(url) { "track" } else { "album" };
+        match spotify::resolve(url).await {
+            Some(meta) => {
+                bot.edit_message_text(msg.chat.id, sent.id, format!("🔍 Found: {}\nSearching on Deezer...", meta.label)).await?;
+                search_and_show(bot, state, msg.chat.id, sent.id, &meta.query, search_type, &format!("😕 No results found on Deezer for: {}", meta.query)).await?;
+            }
+            None => { bot.edit_message_text(msg.chat.id, sent.id, "❌ Could not resolve Spotify link. Try /search instead.").await?; }
+        }
+        return Ok(());
+    }
+
+    // Spotify playlist: scan the track list and queue each song individually, so user-generated playlists work (Deezer rarely has a same-named playlist)
+    if SPOTIFY_PLAYLIST_RE.is_match(url) {
+        bot.edit_message_text(msg.chat.id, sent.id, "🔍 Reading Spotify playlist...").await?;
+        match spotify::resolve_playlist(url).await {
+            Some(pl) => { queue_playlist(bot, msg, state, sent.id, &pl).await?; }
+            None => {
+                bot.edit_message_text(msg.chat.id, sent.id,
+                    "😕 Couldn't read that Spotify playlist. Make sure it's public and try again.").await?;
+            }
+        }
+        return Ok(());
+    }
+    // Apple Music song or album: resolve metadata via the free iTunes lookup API (an album link with ?i= resolves to that single song), then show Deezer search results
+    if apple::APPLE_SONG_RE.is_match(url) || apple::APPLE_ALBUM_RE.is_match(url) {
+        match apple::resolve(url).await {
+            Some(meta) => {
+                bot.edit_message_text(msg.chat.id, sent.id, format!("🔍 Found: {}\nSearching on Deezer...", meta.label)).await?;
+                search_and_show(bot, state, msg.chat.id, sent.id, &meta.query, meta.search_type, &format!("😕 No results found on Deezer for: {}", meta.query)).await?;
+            }
+            None => { bot.edit_message_text(msg.chat.id, sent.id, "❌ Could not resolve Apple Music link. Try /search instead.").await?; }
+        }
+        return Ok(());
+    }
+    Ok(())
+}
+
+fn first_link(results: &[serde_json::Value]) -> Option<String> {
+    results.first().and_then(|x| x["link"].as_str()).map(|s| s.to_string())
+}
+
+/// Queue every track of a scanned playlist by searching it on Deezer and queuing the first match. Edits the status message with progress and a final summary of anything that couldn't be found.
+async fn queue_playlist(
+    bot: &Bot,
+    msg: &Message,
+    state: &Arc<BotState>,
+    status_id: teloxide::types::MessageId,
+    pl: &spotify::Playlist,
+) -> ResponseResult<()> {
+    let total = pl.tracks.len();
+    let mut queued = 0usize;
+    let mut already = 0usize;
+    let mut not_found: Vec<String> = Vec::new();
+
+    for (i, track) in pl.tracks.iter().enumerate() {
+        if i % 5 == 0 {
+            let _ = bot.edit_message_text(msg.chat.id, status_id,
+                format!("⏳ Queuing \"{}\" — {}/{} tracks...", pl.name, i, total)).await;
+        }
+
+        let full_query = if track.artist.is_empty() {
+            track.title.clone()
+        } else {
+            format!("{} {}", track.title, track.artist)
+        };
+        let mut link = deemix::search(state, &full_query, "track").await.ok()
+            .and_then(|r| first_link(&r));
+        if link.is_none() && !track.artist.is_empty() {
+            link = deemix::search(state, &track.title, "track").await.ok()
+                .and_then(|r| first_link(&r));
+        }
+
+        let label = if track.artist.is_empty() {
+            track.title.clone()
+        } else {
+            format!("{} — {}", track.title, track.artist)
+        };
+        match link {
+            Some(l) => match deemix::add_to_queue_confirmed(state, &l, false, msg.chat.id.0).await {
+                Ok(deemix::QueueOutcome::Added { .. }) => queued += 1,
+                Ok(deemix::QueueOutcome::AlreadyInQueue { .. }) => already += 1,
+                Ok(oc) => {
+                    log::warn!("[playlist] not queued {:?}: {:?}", label, oc);
+                    not_found.push(label);
+                }
+                Err(e) if e == deemix::ARL_ERROR => {
+                    // No valid ARL — every remaining track would fail the same way; stop the loop instead of hammering the server.
+                    bot.edit_message_text(msg.chat.id, status_id, format!("❌ Failed to queue: {}", e))
+                        .reply_markup(crate::add_arl_keyboard())
+                        .await?;
+                    return Ok(());
+                }
+                Err(e) => {
+                    log::warn!("[playlist] failed to queue {:?}: {}", label, e);
+                    not_found.push(label);
+                }
+            },
+            None => not_found.push(label),
+        }
+    }
+
+    let mut text = format!("✅ Playlist \"{}\": queued {}/{} tracks.", pl.name, queued, total);
+    if already > 0 {
+        text.push_str(&format!("\nℹ️ Already in queue: {}.", already));
+    }
+    // The Spotify embed page exposes only the first ~100 tracks per playlist, so a count at that limit means the source playlist may have been truncated.
+    if total >= 100 {
+        text.push_str("\n\n⚠️ Note: the source platform only exposes the first ~100 tracks per playlist, so longer playlists may be scanned partially.");
+    }
+    if !not_found.is_empty() {
+        text.push_str("\n\n😕 Couldn't queue these:\n");
+        for t in not_found.iter().take(15) {
+            let t = if t.chars().count() > 80 {
+                format!("{}…", t.chars().take(79).collect::<String>())
+            } else {
+                t.clone()
+            };
+            text.push_str(&format!("• {}\n", t));
+        }
+        if not_found.len() > 15 {
+            text.push_str(&format!("…and {} more", not_found.len() - 15));
+        }
+    }
+    bot.edit_message_text(msg.chat.id, status_id, text).await?;
+    Ok(())
+}

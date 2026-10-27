@@ -1,0 +1,38 @@
+#!/usr/bin/with-contenv bash
+# ==============================================================================
+# Telegram Bot Service
+# ==============================================================================
+
+# Check if Telegram bot is enabled
+TELEGRAM_ENABLED="${TELEGRAM_ENABLED:-false}"
+
+if [[ "${TELEGRAM_ENABLED}" == "true" ]]; then
+    echo "[info] Starting Telegram Bot..."
+
+    # Verify required environment variables
+    if [[ -z "${TELEGRAM_TOKEN}" ]]; then
+        echo "[error] TELEGRAM_TOKEN is not set but Telegram is enabled!"
+        echo "[error] Please configure telegram_token in addon options."
+        exec sleep infinity
+    fi
+
+    # Wait for Deemix start
+    for _ in $(seq 1 60); do
+        (echo > /dev/tcp/127.0.0.1/${DEEMIX_SERVER_PORT}) 2>/dev/null && break
+        sleep 1
+    done
+
+    # Create data directory
+    mkdir -p /config/telegram_bot
+
+    # Log configuration (without exposing secrets)
+    echo "[info] DEEMIX_URL: ${DEEMIX_URL}"
+    echo "[info] DEEMIX_BITRATE_LOCK: ${DEEMIX_BITRATE_LOCK}"
+
+    # Run Telegram Bot
+    exec /usr/local/bin/telegram_bot
+else
+    echo "[info] Telegram Bot is disabled"
+    # Keep service running (S6 expects a long-running process)
+    exec sleep infinity
+fi

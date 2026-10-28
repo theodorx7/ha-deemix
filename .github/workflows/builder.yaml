@@ -36,25 +36,17 @@ jobs:
           path: "./deemix"
       - name: Normalize app information
         id: normalize
-        env:
-          IMAGE: ${{ steps.info.outputs.image }}
-          VERSION: ${{ steps.info.outputs.version }}
-          NAME: ${{ steps.info.outputs.name }}
-          DESCRIPTION: ${{ steps.info.outputs.description }}
-          URL: ${{ steps.info.outputs.url }}
         run: |
-          image="${IMAGE#\"}"; image="${image%\"}"
-          version="${VERSION#\"}"; version="${version%\"}"
-          name="${NAME#\"}"; name="${name%\"}"
-          description="${DESCRIPTION#\"}"; description="${description%\"}"
-          url="${URL#\"}"; url="${url%\"}"
-
+          image=${{ steps.info.outputs.image }}
           echo "image_name=${image##*/}" >> "$GITHUB_OUTPUT"
           echo "registry_prefix=${image%/*}" >> "$GITHUB_OUTPUT"
+          version=${{ steps.info.outputs.version }}
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+          name=${{ steps.info.outputs.name }}
           echo "name=${name}" >> "$GITHUB_OUTPUT"
+          description=${{ steps.info.outputs.description }}
           echo "description=${description}" >> "$GITHUB_OUTPUT"
-
+          url=${{ steps.info.outputs.url }}
           if [[ -n "$url" && "$url" != "null" ]]; then
             echo "url=${url}" >> "$GITHUB_OUTPUT"
           fi
@@ -85,7 +77,6 @@ jobs:
       - name: Build image
         uses: home-assistant/builder/actions/build-image@2026.06.0
         with:
-          cosign: "true"
           arch: ${{ matrix.arch }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           context: "./deemix"
@@ -112,7 +103,6 @@ jobs:
       - name: Publish multi-arch manifest
         uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.06.0
         with:
-          cosign: "true"
           architectures: ${{ needs.init.outputs.architectures }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           image-name: ${{ needs.init.outputs.image_name }}

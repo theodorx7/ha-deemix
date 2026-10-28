@@ -17,7 +17,7 @@ map:
   - media:rw
   - share:rw
 ports:
-  6595/tcp: 6596
+  6595/tcp: 6595
 ingress: true
 ingress_port: 6595
 panel_title: Deemix dev

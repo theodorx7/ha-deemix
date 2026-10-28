@@ -26,6 +26,7 @@ jobs:
       url: ${{ steps.normalize.outputs.url }}
       registry_prefix: ${{ steps.normalize.outputs.registry_prefix }}
       version: ${{ steps.normalize.outputs.version }}
+      image_tags: ${{ steps.tags.outputs.tags }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7.0.1
@@ -50,6 +51,33 @@ jobs:
           if [[ -n "$url" && "$url" != "null" ]]; then
             echo "url=${url}" >> "$GITHUB_OUTPUT"
           fi
+      - name: Enforce branch/version consistency
+        env:
+          VERSION: ${{ steps.normalize.outputs.version }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            if [[ "${VERSION}" == *"-dev"* ]]; then
+              echo "::error::Branch 'main' must build a release version, but found '${VERSION}'. Remove the '-dev' marker from version in deemix/config.yaml before releasing."
+              exit 1
+            fi
+          elif [[ "${VERSION}" != *"-dev"* ]]; then
+              echo "::error::Branch '${GITHUB_REF_NAME}' must not overwrite production tag '${VERSION}'. Bump version in deemix/config.yaml to a '-dev' one."
+            exit 1
+          fi
+      - name: Prepare image tags
+        id: tags
+        env:
+          VERSION: ${{ steps.normalize.outputs.version }}
+        run: |
+          tags="${VERSION}"
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            tags+=$'\n'"latest"
+          fi
+          {
+            echo "tags<<EOF"
+            echo "${tags}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: Prepare build matrix
         id: matrix
         uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.06.0
@@ -81,9 +109,7 @@ jobs:
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           context: "./deemix"
           image: ${{ matrix.image }}
-          image-tags: |
-            ${{ needs.init.outputs.version }}
-            latest
+          image-tags: ${{ needs.init.outputs.image_tags }}
           labels: |
             io.hass.type=app
             io.hass.name=${{ needs.init.outputs.name }}
@@ -106,7 +132,5 @@ jobs:
           architectures: ${{ needs.init.outputs.architectures }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           image-name: ${{ needs.init.outputs.image_name }}
-          image-tags: |
-            ${{ needs.init.outputs.version }}
-            latest
+          image-tags: ${{ needs.init.outputs.image_tags }}
           registry-prefix: ${{ needs.init.outputs.registry_prefix }}

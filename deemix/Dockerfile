@@ -30,12 +30,8 @@ RUN set -eux; \
 # Stage 2: Deemix Client Rebuild
 # ================================================================
 
-FROM ghcr.io/bambanah/deemix:v4.7.2 AS deemix-builder
+FROM ghcr.io/bambanah/deemix:v4.8.0 AS deemix-builder
 
-COPY webui-patch/vite.config.mts /app/packages/webui/vite.config.mts
-COPY webui-patch/index.html /app/packages/webui/index.html
-COPY webui-patch/src/client/main.ts /app/packages/webui/src/client/main.ts
-COPY webui-patch/src/client/utils/socket.ts /app/packages/webui/src/client/utils/socket.ts
 COPY webui-patch/src/client/styles/css/global.css /app/packages/webui/src/client/styles/css/global.css
 
 RUN cd /app/packages/webui && \
@@ -84,7 +80,6 @@ COPY --from=deemix-builder /app/packages/webui/dist /app/packages/webui/dist
 COPY --from=deemix-builder /app/packages/deemix/dist /app/packages/deemix/dist
 COPY --from=deemix-builder /app/packages/deezer-sdk/dist /app/packages/deezer-sdk/dist
 
-# S6 сервис deemix
 COPY --from=deemix-builder /custom-services.d /custom-services.d
 
 ENV NODE_ENV=production

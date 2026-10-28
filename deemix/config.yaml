@@ -1,6 +1,6 @@
-name: "Deemix with telegram bot"
+name: "Deemix with telegram bot (dev)"
 slug: "deemix"
-version: "4.7.2-bot1"
+version: "4.7.2-dev1"
 description: "FLAC/MP3 music downloader with a Telegram bot: remote, chat-based control for automated downloads and built-in audio recognition."
 url: "https://github.com/theodorx7/ha-deemix/"
 image: "ghcr.io/theodorx7/ha-deemix"
@@ -17,10 +17,10 @@ map:
   - media:rw
   - share:rw
 ports:
-  6595/tcp: 6595
+  6595/tcp: 6596
 ingress: true
 ingress_port: 6595
-panel_title: Deemix
+panel_title: Deemix dev
 panel_icon: "mdi:music-circle"
 panel_admin: false
 

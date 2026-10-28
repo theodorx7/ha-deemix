@@ -1,6 +1,6 @@
 name: "Deemix with telegram bot (dev)"
 slug: "deemix"
-version: "4.7.2-dev1"
+version: "4.8.0-dev1"
 description: "FLAC/MP3 music downloader with a Telegram bot: remote, chat-based control for automated downloads and built-in audio recognition."
 url: "https://github.com/theodorx7/ha-deemix/"
 image: "ghcr.io/theodorx7/ha-deemix"
